@@ -1,0 +1,56 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: #f4f4f6;
+  margin: 0;
+  padding: 30px;
+}
+
+.card {
+  max-width: 700px;
+  margin: 0 auto;
+  background: white;
+  padding: 18px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 14px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.messages {
+  border: 1px solid #ddd;
+  height: 380px;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 8px;
+  background: #fafafa;
+  margin-top: 10px;
+}
+
+.msg {
+  margin-bottom: 8px;
+}
+
+.hidden {
+  display: none;
+}
+
+.leave {
+  margin-top: 10px;
+  background: #eee;
+}
