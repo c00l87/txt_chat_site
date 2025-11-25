@@ -1,13 +1,16 @@
-// --- Firebase imports from CDN (modular SDK) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import {
   getAuth,
-  signInAnonymously
+  signInAnonymously,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   getDatabase,
   ref,
   push,
+  set,
+  get,
+  remove,
   onChildAdded,
   query,
   limitToLast,
@@ -15,7 +18,7 @@ import {
   off
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
-// --- 1) Paste YOUR firebaseConfig here ---
+// --- Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCSS-Ej-QDEosJD4EihZyr6y8l8ATzYaI8",
   authDomain: "txt-chat-site.firebaseapp.com",
@@ -26,14 +29,15 @@ const firebaseConfig = {
   appId: "1:316750632828:web:cfab60d020d90d01dcb6f9"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-// --- DOM elements ---
+// --- DOM ---
 const joinScreen = document.getElementById("join-screen");
 const chatScreen = document.getElementById("chat-screen");
+const historyContainer = document.getElementById("history-container");
+const historyList = document.getElementById("room-history-list");
 const joinForm = document.getElementById("join-form");
 const msgForm = document.getElementById("msg-form");
 const roomTitle = document.getElementById("room-title");
@@ -41,81 +45,174 @@ const messagesDiv = document.getElementById("messages");
 const roomCodeInput = document.getElementById("room-code");
 const nameInput = document.getElementById("display-name");
 const msgInput = document.getElementById("msg-input");
-const leaveBtn = document.getElementById("leave-btn");
+const backBtn = document.getElementById("back-btn");
 
 // State
-let roomCode = null;
-let displayName = null;
-let childAddedCallback = null;
+let currentRoom = null;
+let currentName = null;
+let msgListener = null;
 
-// --- Helpers ---
+// --- Authentication & Init ---
+// We need to wait for Auth to load history
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    loadRoomHistory();
+  } else {
+    signInAnonymously(auth);
+  }
+});
+
+// --- History Logic ---
+async function saveRoomToHistory(code) {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  
+  // Save to /users/{uid}/history/{roomCode}
+  const historyRef = ref(db, `users/${uid}/history/${code}`);
+  await set(historyRef, {
+    roomCode: code,
+    lastVisited: serverTimestamp()
+  });
+}
+
+async function loadRoomHistory() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+
+  const historyRef = ref(db, `users/${uid}/history`);
+  const snapshot = await get(historyRef);
+
+  if (snapshot.exists()) {
+    historyContainer.classList.remove("hidden");
+    historyList.innerHTML = "";
+    
+    snapshot.forEach((child) => {
+      const data = child.val();
+      renderHistoryItem(data.roomCode);
+    });
+  } else {
+    historyContainer.classList.add("hidden");
+  }
+}
+
+function renderHistoryItem(code) {
+  const li = document.createElement("li");
+  li.className = "history-item";
+  
+  li.innerHTML = `
+    <div class="history-info">
+      <span class="history-room">#${code}</span>
+      <span class="history-time">Tap to rejoin</span>
+    </div>
+    <button class="delete-btn" aria-label="Delete">×</button>
+  `;
+
+  // Click to Join
+  li.addEventListener("click", (e) => {
+    // Ignore if delete button was clicked
+    if (e.target.classList.contains("delete-btn")) return;
+    
+    roomCodeInput.value = code;
+    // If name is empty, focus it, otherwise submit
+    if(!nameInput.value) {
+        nameInput.focus();
+    } else {
+        // Trigger join
+        joinForm.requestSubmit(); 
+    }
+  });
+
+  // Click to Delete
+  li.querySelector(".delete-btn").addEventListener("click", async (e) => {
+    e.stopPropagation(); // prevent joining
+    const uid = auth.currentUser?.uid;
+    if(uid) {
+        await remove(ref(db, `users/${uid}/history/${code}`));
+        li.remove();
+        if(historyList.children.length === 0) historyContainer.classList.add("hidden");
+    }
+  });
+
+  // Prepend to list (newest top visually)
+  historyList.prepend(li);
+}
+
+// --- Chat Logic ---
+
 function addMessageToUI(msg) {
-  const el = document.createElement("div");
-  el.className = "msg";
-  el.innerHTML = `<b>${msg.sender || "Anonymous"}:</b> ${msg.text}`;
-  messagesDiv.appendChild(el);
+  const isSelf = msg.uid === auth.currentUser?.uid;
+  
+  const div = document.createElement("div");
+  div.className = `msg ${isSelf ? "self" : "other"}`;
+  
+  // Only show name for others
+  const nameHtml = isSelf ? "" : `<span class="sender-name">${msg.sender}</span>`;
+  
+  div.innerHTML = `
+    ${nameHtml}
+    <div class="text">${msg.text}</div>
+  `;
+  
+  messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-function clearMessagesUI() {
-  messagesDiv.innerHTML = "";
-}
-
-// --- 2) Join a room ---
+// Join Room
 joinForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const code = roomCodeInput.value.trim().toLowerCase(); // Normalize codes
+  const name = nameInput.value.trim();
 
-  roomCode = roomCodeInput.value.trim();
-  displayName = nameInput.value.trim();
+  if (!code || !name) return;
 
-  if (!roomCode || !displayName) return;
+  currentRoom = code;
+  currentName = name;
 
-  // Sign in anonymously so rules can require auth
-  await signInAnonymously(auth);
-
-  // Switch screens
+  // UI Updates
   joinScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
-  roomTitle.textContent = `Room: ${roomCode}`;
-  clearMessagesUI();
+  roomTitle.textContent = `#${code}`;
+  messagesDiv.innerHTML = "";
+  
+  // Save to history
+  await saveRoomToHistory(code);
+  loadRoomHistory(); // refresh list in background
 
-  // Listen for last 100 messages in this room
-  const msgsQuery = query(ref(db, `rooms/${roomCode}/messages`), limitToLast(100));
-
-  childAddedCallback = onChildAdded(msgsQuery, (snap) => {
+  // Listen for messages
+  const msgsQuery = query(ref(db, `rooms/${code}/messages`), limitToLast(50));
+  msgListener = onChildAdded(msgsQuery, (snap) => {
     addMessageToUI(snap.val());
   });
 });
 
-// --- 3) Send a message ---
+// Send Message
 msgForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-
   const text = msgInput.value.trim();
-  if (!text || !roomCode) return;
+  
+  if (!text || !currentRoom) return;
 
-  await push(ref(db, `rooms/${roomCode}/messages`), {
+  await push(ref(db, `rooms/${currentRoom}/messages`), {
     text,
-    sender: displayName,
+    sender: currentName,
     uid: auth.currentUser?.uid,
     createdAt: serverTimestamp()
   });
 
   msgInput.value = "";
+  msgInput.focus();
 });
 
-// --- 4) Leave room (optional helper) ---
-leaveBtn.addEventListener("click", () => {
-  if (roomCode && childAddedCallback) {
-    const msgsQuery = query(ref(db, `rooms/${roomCode}/messages`), limitToLast(100));
-    off(msgsQuery, "child_added", childAddedCallback);
+// Leave / Back
+backBtn.addEventListener("click", () => {
+  if (currentRoom && msgListener) {
+    const msgsQuery = query(ref(db, `rooms/${currentRoom}/messages`));
+    off(msgsQuery, "child_added", msgListener);
   }
 
-  roomCode = null;
-  displayName = null;
-  childAddedCallback = null;
+  currentRoom = null;
+  msgListener = null;
 
   chatScreen.classList.add("hidden");
   joinScreen.classList.remove("hidden");
-  clearMessagesUI();
 });

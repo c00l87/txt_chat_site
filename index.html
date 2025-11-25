@@ -1,41 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <title>FloChat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
   </head>
 
   <body>
-    <main class="card">
-      <h1>FloChat</h1>
+    <div class="app-container">
+      <header>
+        <h1>FloChat</h1>
+      </header>
 
-      <!-- JOIN SCREEN -->
-      <section id="join-screen">
-        <p>Enter a room code and your name.</p>
+      <section id="join-screen" class="screen fade-in">
+        <div class="card">
+          <h2>Join a Room</h2>
+          <p class="subtitle">Enter a code to chat anonymously.</p>
 
-        <form id="join-form">
-          <input id="room-code" placeholder="room code" required />
-          <input id="display-name" placeholder="your display name" required />
-          <button type="submit">Join</button>
-        </form>
+          <form id="join-form">
+            <div class="input-group">
+              <input id="display-name" placeholder="Your Name" required />
+            </div>
+            <div class="input-group">
+              <input id="room-code" placeholder="Room Code (e.g. pizza)" required />
+            </div>
+            <button type="submit" class="btn-primary">Join Room</button>
+          </form>
+
+          <div id="history-container" class="hidden">
+            <h3>Recent Rooms</h3>
+            <ul id="room-history-list"></ul>
+          </div>
+        </div>
       </section>
 
-      <!-- CHAT SCREEN -->
-      <section id="chat-screen" class="hidden">
-        <h2 id="room-title"></h2>
+      <section id="chat-screen" class="screen hidden">
+        <div class="chat-header">
+          <button id="back-btn" class="icon-btn">←</button>
+          <h2 id="room-title">Room Name</h2>
+          <div class="spacer"></div>
+        </div>
 
-        <div id="messages" class="messages"></div>
+        <div id="messages" class="messages-area">
+            </div>
 
-        <form id="msg-form" class="msg-form">
-          <input id="msg-input" placeholder="say something..." autocomplete="off" />
-          <button type="submit">Send</button>
+        <form id="msg-form" class="input-area">
+          <input id="msg-input" placeholder="Type a message..." autocomplete="off" />
+          <button type="submit" class="btn-send">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+          </button>
         </form>
-
-        <button id="leave-btn" class="leave">Leave room</button>
       </section>
-    </main>
+    </div>
 
     <script type="module" src="chat.js"></script>
   </body>
