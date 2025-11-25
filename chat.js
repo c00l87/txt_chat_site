@@ -33,7 +33,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-// --- DOM ---
+// --- DOM Elements ---
 const joinScreen = document.getElementById("join-screen");
 const chatScreen = document.getElementById("chat-screen");
 const historyContainer = document.getElementById("history-container");
@@ -52,8 +52,14 @@ let currentRoom = null;
 let currentName = null;
 let msgListener = null;
 
-// --- Authentication & Init ---
-// We need to wait for Auth to load history
+// --- Helper: Format Timestamp ---
+function formatTime(timestamp) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// --- Auth & Init ---
 onAuthStateChanged(auth, (user) => {
   if (user) {
     loadRoomHistory();
@@ -86,6 +92,7 @@ async function loadRoomHistory() {
     historyContainer.classList.remove("hidden");
     historyList.innerHTML = "";
     
+    // Sort logic could go here, for now we just list them
     snapshot.forEach((child) => {
       const data = child.val();
       renderHistoryItem(data.roomCode);
@@ -109,22 +116,20 @@ function renderHistoryItem(code) {
 
   // Click to Join
   li.addEventListener("click", (e) => {
-    // Ignore if delete button was clicked
+    // Prevent join if delete was clicked
     if (e.target.classList.contains("delete-btn")) return;
     
     roomCodeInput.value = code;
-    // If name is empty, focus it, otherwise submit
     if(!nameInput.value) {
         nameInput.focus();
     } else {
-        // Trigger join
         joinForm.requestSubmit(); 
     }
   });
 
   // Click to Delete
   li.querySelector(".delete-btn").addEventListener("click", async (e) => {
-    e.stopPropagation(); // prevent joining
+    e.stopPropagation();
     const uid = auth.currentUser?.uid;
     if(uid) {
         await remove(ref(db, `users/${uid}/history/${code}`));
@@ -133,24 +138,23 @@ function renderHistoryItem(code) {
     }
   });
 
-  // Prepend to list (newest top visually)
   historyList.prepend(li);
 }
 
 // --- Chat Logic ---
-
 function addMessageToUI(msg) {
   const isSelf = msg.uid === auth.currentUser?.uid;
+  const timeString = formatTime(msg.createdAt);
   
   const div = document.createElement("div");
   div.className = `msg ${isSelf ? "self" : "other"}`;
   
-  // Only show name for others
   const nameHtml = isSelf ? "" : `<span class="sender-name">${msg.sender}</span>`;
   
   div.innerHTML = `
     ${nameHtml}
     <div class="text">${msg.text}</div>
+    <div class="msg-time">${timeString}</div>
   `;
   
   messagesDiv.appendChild(div);
@@ -160,7 +164,7 @@ function addMessageToUI(msg) {
 // Join Room
 joinForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const code = roomCodeInput.value.trim().toLowerCase(); // Normalize codes
+  const code = roomCodeInput.value.trim().toLowerCase();
   const name = nameInput.value.trim();
 
   if (!code || !name) return;
@@ -168,17 +172,17 @@ joinForm.addEventListener("submit", async (e) => {
   currentRoom = code;
   currentName = name;
 
-  // UI Updates
+  // UI Transition
   joinScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
   roomTitle.textContent = `#${code}`;
   messagesDiv.innerHTML = "";
   
-  // Save to history
+  // History
   await saveRoomToHistory(code);
-  loadRoomHistory(); // refresh list in background
+  loadRoomHistory(); 
 
-  // Listen for messages
+  // Listener
   const msgsQuery = query(ref(db, `rooms/${code}/messages`), limitToLast(50));
   msgListener = onChildAdded(msgsQuery, (snap) => {
     addMessageToUI(snap.val());
@@ -216,32 +220,3 @@ backBtn.addEventListener("click", () => {
   chatScreen.classList.add("hidden");
   joinScreen.classList.remove("hidden");
 });
-
-// --- Helper: Format Timestamp ---
-function formatTime(timestamp) {
-  if (!timestamp) return ""; // Handle potential latency nulls
-  const date = new Date(timestamp);
-  // Returns "10:42 AM" format
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-// --- Updated UI Function ---
-function addMessageToUI(msg) {
-  const isSelf = msg.uid === auth.currentUser?.uid;
-  const timeString = formatTime(msg.createdAt);
-  
-  const div = document.createElement("div");
-  div.className = `msg ${isSelf ? "self" : "other"}`;
-  
-  // Logic: Show name only for others
-  const nameHtml = isSelf ? "" : `<span class="sender-name">${msg.sender}</span>`;
-  
-  div.innerHTML = `
-    ${nameHtml}
-    <div class="text">${msg.text}</div>
-    <div class="msg-time">${timeString}</div>
-  `;
-  
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}

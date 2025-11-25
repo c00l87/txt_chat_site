@@ -154,6 +154,16 @@ input:focus { border-color: var(--primary); }
   border-bottom-left-radius: 4px;
 }
 
+/* Timestamps */
+.msg-time {
+  font-size: 0.65rem;
+  margin-top: 4px;
+  text-align: right;
+  align-self: flex-end;
+}
+.msg.self .msg-time { color: rgba(255, 255, 255, 0.7); }
+.msg.other .msg-time { color: rgba(0, 0, 0, 0.45); }
+
 .input-area {
   display: flex;
   gap: 10px;
@@ -172,22 +182,4 @@ input:focus { border-color: var(--primary); }
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-}
-
-.msg-time {
-  font-size: 0.65rem;
-  margin-top: 4px;
-  text-align: right;
-  /* Prevent time from wrapping awkwardly if message is short */
-  align-self: flex-end; 
-}
-
-/* Make time subtle white on blue bubbles */
-.msg.self .msg-time {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-/* Make time subtle gray on gray bubbles */
-.msg.other .msg-time {
-  color: rgba(0, 0, 0, 0.45);
 }
