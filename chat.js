@@ -216,3 +216,32 @@ backBtn.addEventListener("click", () => {
   chatScreen.classList.add("hidden");
   joinScreen.classList.remove("hidden");
 });
+
+// --- Helper: Format Timestamp ---
+function formatTime(timestamp) {
+  if (!timestamp) return ""; // Handle potential latency nulls
+  const date = new Date(timestamp);
+  // Returns "10:42 AM" format
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// --- Updated UI Function ---
+function addMessageToUI(msg) {
+  const isSelf = msg.uid === auth.currentUser?.uid;
+  const timeString = formatTime(msg.createdAt);
+  
+  const div = document.createElement("div");
+  div.className = `msg ${isSelf ? "self" : "other"}`;
+  
+  // Logic: Show name only for others
+  const nameHtml = isSelf ? "" : `<span class="sender-name">${msg.sender}</span>`;
+  
+  div.innerHTML = `
+    ${nameHtml}
+    <div class="text">${msg.text}</div>
+    <div class="msg-time">${timeString}</div>
+  `;
+  
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
