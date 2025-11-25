@@ -59,6 +59,13 @@ function formatTime(timestamp) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+// --- Helper: Scroll to bottom ---
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  });
+}
+
 // --- Auth & Init ---
 onAuthStateChanged(auth, (user) => {
   if (user) {
@@ -73,7 +80,6 @@ async function saveRoomToHistory(code) {
   const uid = auth.currentUser?.uid;
   if (!uid) return;
   
-  // Save to /users/{uid}/history/{roomCode}
   const historyRef = ref(db, `users/${uid}/history/${code}`);
   await set(historyRef, {
     roomCode: code,
@@ -92,7 +98,6 @@ async function loadRoomHistory() {
     historyContainer.classList.remove("hidden");
     historyList.innerHTML = "";
     
-    // Sort logic could go here, for now we just list them
     snapshot.forEach((child) => {
       const data = child.val();
       renderHistoryItem(data.roomCode);
@@ -114,9 +119,7 @@ function renderHistoryItem(code) {
     <button class="delete-btn" aria-label="Delete">×</button>
   `;
 
-  // Click to Join
   li.addEventListener("click", (e) => {
-    // Prevent join if delete was clicked
     if (e.target.classList.contains("delete-btn")) return;
     
     roomCodeInput.value = code;
@@ -127,7 +130,6 @@ function renderHistoryItem(code) {
     }
   });
 
-  // Click to Delete
   li.querySelector(".delete-btn").addEventListener("click", async (e) => {
     e.stopPropagation();
     const uid = auth.currentUser?.uid;
@@ -158,7 +160,7 @@ function addMessageToUI(msg) {
   `;
   
   messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  scrollToBottom();
 }
 
 // Join Room
@@ -172,17 +174,14 @@ joinForm.addEventListener("submit", async (e) => {
   currentRoom = code;
   currentName = name;
 
-  // UI Transition
   joinScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
   roomTitle.textContent = `#${code}`;
   messagesDiv.innerHTML = "";
   
-  // History
   await saveRoomToHistory(code);
   loadRoomHistory(); 
 
-  // Listener
   const msgsQuery = query(ref(db, `rooms/${code}/messages`), limitToLast(50));
   msgListener = onChildAdded(msgsQuery, (snap) => {
     addMessageToUI(snap.val());
@@ -205,6 +204,7 @@ msgForm.addEventListener("submit", async (e) => {
 
   msgInput.value = "";
   msgInput.focus();
+  scrollToBottom();
 });
 
 // Leave / Back

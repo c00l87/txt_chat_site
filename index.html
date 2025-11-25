@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>FloChat</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,38 +12,41 @@
 
   <body>
     <div class="app-container">
-      <header>
-        <h1>FloChat</h1>
-      </header>
-
+      
       <section id="join-screen" class="screen fade-in">
-        <div class="card">
-          <h2>Join a Room</h2>
-          <p class="subtitle">Enter a code to chat anonymously.</p>
+        <header>
+            <h1>FloChat</h1>
+        </header>
+        <div class="center-content">
+            <div class="card">
+            <h2>Join a Room</h2>
+            <p class="subtitle">Enter a code to chat anonymously.</p>
 
-          <form id="join-form">
-            <div class="input-group">
-              <input id="display-name" placeholder="Your Name" required />
-            </div>
-            <div class="input-group">
-              <input id="room-code" placeholder="Room Code (e.g. pizza)" required />
-            </div>
-            <button type="submit" class="btn-primary">Join Room</button>
-          </form>
+            <form id="join-form">
+                <div class="input-group">
+                <input id="display-name" placeholder="Your Name" required />
+                </div>
+                <div class="input-group">
+                <input id="room-code" placeholder="Room Code (e.g. pizza)" required />
+                </div>
+                <button type="submit" class="btn-primary">Join Room</button>
+            </form>
 
-          <div id="history-container" class="hidden">
-            <h3>Recent Rooms</h3>
-            <ul id="room-history-list"></ul>
-          </div>
+            <div id="history-container" class="hidden">
+                <h3>Recent Rooms</h3>
+                <ul id="room-history-list"></ul>
+            </div>
+            </div>
         </div>
       </section>
 
       <section id="chat-screen" class="screen hidden">
         <div class="chat-header">
-          <button id="back-btn" class="icon-btn">←</button>
+          <button id="back-btn" class="icon-btn">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
           <h2 id="room-title">Room Name</h2>
-          <div class="spacer"></div>
-        </div>
+          <div class="spacer" style="width: 24px;"></div> </div>
 
         <div id="messages" class="messages-area">
             </div>
