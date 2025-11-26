@@ -20,7 +20,7 @@
         </header>
         <div class="center-content">
             <div class="card">
-                <button id="btn-show-login" class="btn-primary">Log In</button>
+                <button id="btn-show-login" class="btn-primary">Log In with Email</button>
                 <button id="btn-show-signup" class="btn-secondary">Create Account</button>
             </div>
         </div>
@@ -127,7 +127,7 @@
             <span class="close-modal">&times;</span>
             <h2>Log In</h2>
             <form id="form-login">
-                <input id="login-user" placeholder="Username" required />
+                <input id="login-email" type="email" placeholder="Email Address" required />
                 <input id="login-pass" type="password" placeholder="Password" required />
                 <button type="submit" class="btn-primary">Go</button>
                 <p style="text-align: center; margin-top: 10px;">
@@ -142,8 +142,8 @@
             <span class="close-modal">&times;</span>
             <h2>Create Account</h2>
             <form id="form-signup">
-                <input id="signup-user" placeholder="Choose Username" required />
-                <input id="signup-email" type="email" placeholder="Email (Optional)" />
+                <input id="signup-email" type="email" placeholder="Email Address" required />
+                <input id="signup-name" placeholder="Display Name (e.g. John)" required />
                 <input id="signup-pass" type="password" placeholder="Password (min 6 chars)" required />
                 <button type="submit" class="btn-primary">Create</button>
             </form>
@@ -155,8 +155,6 @@
             <span class="close-modal">&times;</span>
             <h2>Account Settings</h2>
             <form id="form-change-pass">
-                 <label style="font-size: 0.9rem; color: var(--text-sub);">Contact Email (Optional):</label>
-                 <input id="settings-email" type="email" placeholder="Enter email address" />
                  <label style="font-size: 0.9rem; color: var(--text-sub); margin-top: 10px; display:block;">Change Password:</label>
                 <input id="new-pass" type="password" placeholder="New Password (leave blank to keep)" />
                 <button type="submit" class="btn-primary">Save Changes</button>

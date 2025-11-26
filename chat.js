@@ -70,7 +70,7 @@ const btnLogout = document.getElementById("btn-logout");
 const btnSettings = document.getElementById("btn-settings");
 const btnForgotPass = document.getElementById("btn-forgot-pass");
 const btnThemeToggle = document.getElementById("btn-theme-toggle");
-const btnMuteToggle = document.getElementById("btn-mute-toggle"); // NEW
+const btnMuteToggle = document.getElementById("btn-mute-toggle");
 const btnActiveUsers = document.getElementById("btn-active-users");
 
 const joinForm = document.getElementById("join-form");
@@ -115,7 +115,7 @@ const MASTER_PASS = "admin 67";
 let gifSearchTimeout = null;
 let recognition = null; 
 let isDarkMode = false; 
-let isMuted = false; // NEW state
+let isMuted = false; 
 let typingTimeout = null; 
 
 
@@ -176,11 +176,8 @@ function enableDarkMode(enable) {
 function toggleMute(muted) {
     isMuted = muted;
     localStorage.setItem('flochat-muted', muted);
-    // Update icon based on state
     btnMuteToggle.innerHTML = muted ? 
-        // Muted icon with X
         '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>' : 
-        // Unmuted icon with waves
         '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
 }
 
@@ -215,14 +212,10 @@ btnShowLogin.addEventListener("click", () => toggleModal(modalLogin, true));
 btnShowSignup.addEventListener("click", () => toggleModal(modalSignup, true));
 btnActiveUsers.addEventListener("click", () => toggleModal(modalActiveUsers, true)); 
 
-// Open Settings and load email
+// Open Settings
 btnSettings.addEventListener("click", async () => {
     toggleModal(modalSettings, true);
-    const uid = auth.currentUser.uid;
-    const emailSnap = await get(ref(db, `users/${uid}/profile/email`));
-    if(emailSnap.exists()) {
-        document.getElementById("settings-email").value = emailSnap.val();
-    }
+    // No longer need to fetch email from DB
 });
 
 closeModals.forEach(btn => btn.addEventListener("click", () => {
@@ -234,63 +227,52 @@ closeModals.forEach(btn => btn.addEventListener("click", () => {
 btnLogout.addEventListener("click", () => signOut(auth));
 
 
-// --- PASSWORD & EMAIL MANAGEMENT ---
+// --- PASSWORD MANAGEMENT (REAL EMAIL) ---
 
 btnForgotPass.addEventListener("click", async () => {
-    const username = document.getElementById("login-user").value.trim();
-    if(!username) {
-        alert("Please enter your username first.");
+    // Get email from the LOGIN form input
+    const email = document.getElementById("login-email").value.trim();
+    if(!email) {
+        alert("Please enter your email address in the Login box first.");
         return;
     }
-    const email = `${username}@flochat.com`;
     try {
+        // Send the REAL Firebase reset email
         await sendPasswordResetEmail(auth, email);
-        alert(`Password reset email sent to the email associated with ${username}. Check your inbox (and spam).`);
+        alert(`Password reset link sent to ${email}. Check your inbox (and spam).`);
         toggleModal(modalLogin, false);
     } catch (error) {
         alert("Error sending reset email: " + error.message);
     }
 });
 
-// Updated Settings Form Handler (Password + Email)
+// Settings Form Handler (Password Only)
 formSettings.addEventListener("submit", async (e) => {
     e.preventDefault();
     const newPass = document.getElementById("new-pass").value;
-    const newEmail = document.getElementById("settings-email").value.trim();
     const user = auth.currentUser;
 
     if(!user) return;
+    if(!newPass) {
+        alert("Please enter a new password to change it.");
+        return;
+    }
 
-    let updates = [];
     try {
-        // Update Password if provided
-        if(newPass) {
-            updates.push(updatePassword(user, newPass).then(() => "Password updated."));
-        }
-        // Update Email in DB
-        if(newEmail !== "") {
-             updates.push(set(ref(db, `users/${user.uid}/profile/email`), newEmail).then(() => "Email saved."));
-        } else {
-            // If cleared, remove it
-             updates.push(remove(ref(db, `users/${user.uid}/profile/email`)).then(() => "Email removed."));
-        }
-
-        const results = await Promise.all(updates);
-        alert(results.join("\n"));
+        await updatePassword(user, newPass);
+        alert("Password updated successfully!");
         toggleModal(modalSettings, false);
-
     } catch (error) {
-        alert("Error updating settings: " + error.message + " (If changing password, you may need to re-login first).");
+        alert("Error updating password: " + error.message + " (You may need to re-login first).");
     }
 });
 
 
-// --- AUTH FORMS ---
+// --- AUTH FORMS (REAL EMAIL) ---
 formLogin.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const username = document.getElementById("login-user").value.trim();
+    const email = document.getElementById("login-email").value.trim();
     const pass = document.getElementById("login-pass").value;
-    const email = `${username}@flochat.com`;
 
     try {
         await signInWithEmailAndPassword(auth, email, pass);
@@ -300,28 +282,28 @@ formLogin.addEventListener("submit", async (e) => {
     }
 });
 
-// Updated Signup Form Handler (Saves Email to DB)
 formSignup.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const username = document.getElementById("signup-user").value.trim();
+    // Get real email and display name
+    const email = document.getElementById("signup-email").value.trim();
+    const displayName = document.getElementById("signup-name").value.trim();
     const pass = document.getElementById("signup-pass").value;
-    const emailOptional = document.getElementById("signup-email").value.trim();
-    // We still use the fake email for firebase auth login for now
-    const fakeAuthEmail = `${username}@flochat.com`; 
+
+    if(!email || !displayName || !pass) {
+        alert("Please fill in all fields.");
+        return;
+    }
 
     try {
-        const userCred = await createUserWithEmailAndPassword(auth, fakeAuthEmail, pass);
-        await updateProfile(userCred.user, { displayName: username });
+        // Create user with REAL email
+        const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+        // Set their display name
+        await updateProfile(userCred.user, { displayName: displayName });
         
-        // SAVE OPTIONAL EMAIL TO DB
-        if(emailOptional) {
-             await set(ref(db, `users/${userCred.user.uid}/profile/email`), emailOptional);
-        }
-
         toggleModal(modalSignup, false);
     } catch (err) {
         if (err.code === 'auth/email-already-in-use') {
-            alert("That username is already taken.");
+            alert("That email is already in use.");
         } else if (err.code === 'auth/weak-password') {
              alert("Password should be at least 6 characters.");
         } else {
@@ -719,12 +701,11 @@ async function enterChat(code) {
     if (pendingArea.children.length === 0) pendingArea.classList.add("hidden");
   });
 
-  // NEW: Listen for active users ADDED (Join beep)
+  // Listen for active users ADDED (Join beep)
   activeUsersAddListener = onChildAdded(ref(db, `rooms/${code}/online`), (snap) => {
       const userUid = snap.key;
       const userData = snap.val();
       
-      // Add to UI list
       const li = document.createElement("li");
       li.id = `online-${userUid}`;
       li.className = "active-user-item";
@@ -737,7 +718,7 @@ async function enterChat(code) {
       }
   });
 
-  // NEW: Listen for active users REMOVED (Leave beep)
+  // Listen for active users REMOVED (Leave beep)
   activeUsersRemoveListener = onChildRemoved(ref(db, `rooms/${code}/online`), (snap) => {
       const userUid = snap.key;
       const el = document.getElementById(`online-${userUid}`);
