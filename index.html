@@ -74,12 +74,18 @@
              <h2 id="room-title">Room</h2>
              <span id="room-pass-display" class="pass-badge hidden">Pass: ???</span>
           </div>
-          <div class="spacer" style="width: 24px;"></div>
+          <div class="header-actions">
+             <button id="btn-active-users" class="icon-btn" title="Active Users">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </button>
+          </div>
         </div>
 
         <div id="pending-area" class="pending-container hidden"></div>
 
         <div id="messages" class="messages-area"></div>
+
+        <div id="typing-indicator" class="typing-indicator hidden"></div>
 
         <div id="gif-picker" class="gif-picker hidden">
             <div class="gif-search-bar">
@@ -87,7 +93,6 @@
             </div>
             <div id="gif-results" class="gif-results"></div>
         </div>
-
         <div id="emoji-picker-container" class="emoji-picker-container hidden">
              <emoji-picker class="light"></emoji-picker>
         </div>
@@ -111,6 +116,8 @@
       </section>
 
     </div>
+
+    <audio id="msg-sound" preload="auto" src="data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAABYaW5nAAAADwAAAAcAAACQAAkJCAkJCAkJCQkJCQkJCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA//uQxAEAC0gBaAAAAAAAC0AFoAAAAAAFgBgFwA4CcBgFgC4B8A8AAA//uQxBEAC0AFoAAAAAAAC0AFoAAAAAAA4AcA8AcAsAWAHAbgFgAA//uQxCEAC0AFoAAAAAAAC0AFoAAAAAAAcAsAcAuAeAGALAHgDgBwAA//uQxDEAC0AFoAAAAAAAC0AFoAAAAAAAdAOAPADgCwC4AcA8AWAHA//uQxEEAC0AFoAAAAAAAC0AFoAAAAAAAcAWALALgBgDwBwA4BYAsAA//uQxFEAC0AFoAAAAAAAC0AFoAAAAAAAcA8AWAHALgBgDwBwCYBYA//uQxGEAC0AFoAAAAAAAC0AFoAAAAAAAOAGAHADgDwBYAuAGAHAHg//uQxHEAC0AFoAAAAAAAC0AFoAAAAAAAHADgDgCwBYAcAOAHADgC4//uQxIEAC0AFoAAAAAAAC0AFoAAAAAAAHALgDwBwBYA4AsAWAHAPg//uQxJEAC0AFoAAAAAAAC0AFoAAAAAAAdA+AWAOAHALgBgDwBwCYA//uQxKEAC0AFoAAAAAAAC0AFoAAAAAAAHALgDgDwBwBYA4AcAWAHg//uQxLEAC0AFoAAAAAAAC0AFoAAAAAAAcAOALADgBgCwA4A8AWALg//uQxMEAC0AFoAAAAAAAC0AFoAAAAAAAHADgDwBYAuAOAHADgDgCw//uQxNEAC0AFoAAAAAAAC0AFoAAAAAAAcAWAOALgBgC4AcAOAPAHg//uQxOEAC0AFoAAAAAAAC0AFoAAAAAAAcAcAOALABgDgBwBYAsAOA//uQxPEAC0AFoAAAAAAAC0AFoAAAAAAAdAOALgBgC4AcAOAPAHgFg//uQxQEAC0AFoAAAAAAAC0AFoAAAAAAAcAsAcAWAHADgDwBwC4AYAs//uQxREAC0AFoAAAAAAAC0AFoAAAAAAAeAGALgFgC4AcAOAPAHgDg//uQxSEAC0AFoAAAAAAAC0AFoAAAAAAAOALADgBwBYAsAcAWAGALg//uQxTEAC0AFoAAAAAAAC0AFoAAAAAAAcAuAHAHAHgDgC4AYA8AWAP//uQxUEAC0AFoAAAAAAAC0AFoAAAAAAAcAWALgFgBwA4A8AcAuAGAP//uQxVEAC0AFoAAAAAAAC0AFoAAAAAAAdAeAOAHAHAHgC4AYAsAWAH//uQxWEAC0AFoAAAAAAAC0AFoAAAAAAAHABgC4A8AcAWALADgBwB4A//uQxXEAC0AFoAAAAAAAC0AFoAAAAAAAcA8AWALABgC4A8AcAWALAD//uQxYEAC0AFoAAAAAAAC0AFoAAAAAAAcAOAeAGALgBwB4A4AsAWAL//uQxZEAC0AFoAAAAAAAC0AFoAAAAAAAHABgC4A8AcAWALADgDwB4A//uQxacAC0AFoAAAAAAAC0AFoAAAAAAA="></audio>
 
     <div id="modal-login" class="modal hidden">
         <div class="modal-content">
@@ -147,6 +154,15 @@
                 <input id="new-pass" type="password" placeholder="New Password (min 6 chars)" required />
                 <button type="submit" class="btn-primary">Update Password</button>
             </form>
+        </div>
+    </div>
+
+    <div id="modal-active-users" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Active Users</h2>
+            <ul id="active-users-list">
+                </ul>
         </div>
     </div>
 

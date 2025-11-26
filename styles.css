@@ -213,16 +213,10 @@ input:focus { border-color: var(--primary); background: var(--card-bg); }
 .msg.self { align-self: flex-end; background: var(--bubble-self); color: var(--text-on-self); border-bottom-right-radius: 4px; }
 .msg.other { align-self: flex-start; background: var(--bubble-other); color: var(--text-on-other); border-bottom-left-radius: 4px; }
 
-/* --- SENDER NAME STYLES --- */
+/* SENDER NAME STYLES */
 .msg .sender-name {
-  font-size: 0.85rem; /* Larger */
-  margin-bottom: 4px; /* More space */
-  opacity: 1; /* Fully visible */
-  display: block;
-  font-weight: 700; /* Bold */
-  color: var(--text-sub); /* Distinct color that works in both modes */
+  font-size: 0.85rem; margin-bottom: 4px; opacity: 1; display: block; font-weight: 700; color: var(--text-sub);
 }
-
 .msg-time { font-size: 0.65rem; margin-top: 4px; text-align: right; align-self: flex-end; opacity: 0.7; }
 .msg.self .msg-time { color: var(--text-on-self); }
 .msg.other .msg-time { color: var(--text-sub); }
@@ -236,6 +230,11 @@ input:focus { border-color: var(--primary); background: var(--card-bg); }
 }
 .msg:has(.msg-image) { padding: 5px; background: transparent; }
 .msg.self:has(.msg-image) .sender-name, .msg.self:has(.msg-image) .msg-time { color: var(--text-sub); padding: 0 5px;}
+
+/* NEW: Typing Indicator */
+.typing-indicator {
+    padding: 5px 15px; font-size: 0.8rem; color: var(--text-sub); font-style: italic; background: var(--card-bg);
+}
 
 /* Input Area, GIF, Emoji, Mic Pickers */
 .input-area {
@@ -294,4 +293,14 @@ emoji-picker { width: 100%; height: 100%; }
 .close-modal { 
     position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; 
     color: var(--text-sub);
+}
+
+/* Active User List Styles */
+#active-users-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
+.active-user-item {
+    display: flex; align-items: center; padding: 10px; border-bottom: 1px solid var(--border-light);
+}
+.online-dot {
+    width: 10px; height: 10px; background: var(--success); border-radius: 50%; margin-right: 10px;
+    box-shadow: 0 0 0 2px var(--card-bg);
 }

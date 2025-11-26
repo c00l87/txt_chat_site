@@ -24,7 +24,8 @@ import {
   query,
   limitToLast,
   serverTimestamp,
-  off
+  off,
+  onDisconnect // NEW IMPORT
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 // --- Config ---
@@ -56,6 +57,7 @@ const chatScreen = document.getElementById("chat-screen");
 const modalLogin = document.getElementById("modal-login");
 const modalSignup = document.getElementById("modal-signup");
 const modalChangePass = document.getElementById("modal-change-pass");
+const modalActiveUsers = document.getElementById("modal-active-users");
 const btnShowLogin = document.getElementById("btn-show-login");
 const btnShowSignup = document.getElementById("btn-show-signup");
 const closeModals = document.querySelectorAll(".close-modal");
@@ -67,8 +69,8 @@ const formChangePass = document.getElementById("form-change-pass");
 const btnLogout = document.getElementById("btn-logout");
 const btnSettings = document.getElementById("btn-settings");
 const btnForgotPass = document.getElementById("btn-forgot-pass");
-// NEW: Theme Toggle Button
 const btnThemeToggle = document.getElementById("btn-theme-toggle");
+const btnActiveUsers = document.getElementById("btn-active-users");
 
 const joinForm = document.getElementById("join-form");
 const msgForm = document.getElementById("msg-form");
@@ -84,6 +86,10 @@ const msgInput = document.getElementById("msg-input");
 const backBtn = document.getElementById("back-btn");
 const welcomeMsg = document.getElementById("welcome-msg");
 const joinStatus = document.getElementById("join-status");
+const typingIndicator = document.getElementById("typing-indicator");
+const activeUsersList = document.getElementById("active-users-list");
+const msgSound = document.getElementById("msg-sound"); // NEW
+
 
 // GIF, Emoji, Mic Elements
 const btnGif = document.getElementById("btn-gif");
@@ -101,10 +107,13 @@ let currentRoom = null;
 let msgListener = null;
 let pendingListener = null;
 let approvalListener = null;
+let activeUsersListener = null; 
+let typingListener = null; 
 const MASTER_PASS = "admin 67";
 let gifSearchTimeout = null;
-let recognition = null; // For speech recognition
-let isDarkMode = false; // Theme state
+let recognition = null; 
+let isDarkMode = false; 
+let typingTimeout = null; 
 
 
 // --- UTILS ---
@@ -134,25 +143,20 @@ function generateRoomPassword() {
 
 
 // --- THEME LOGIC ---
-
-// 1. Check for saved theme preference on load
 const savedTheme = localStorage.getItem('flochat-theme');
 if (savedTheme === 'dark') {
     enableDarkMode(true);
 }
 
-// 2. Toggle theme function
 function enableDarkMode(enable) {
     isDarkMode = enable;
     document.body.classList.toggle('dark-mode', enable);
     localStorage.setItem('flochat-theme', enable ? 'dark' : 'light');
-    // Update icon (Sun for light mode, Moon for dark mode)
     btnThemeToggle.innerHTML = enable ? 
         '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>' :
         '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
 }
 
-// 3. Theme button listener
 btnThemeToggle.addEventListener('click', () => {
     enableDarkMode(!isDarkMode);
 });
@@ -179,10 +183,12 @@ onAuthStateChanged(auth, (user) => {
 btnShowLogin.addEventListener("click", () => toggleModal(modalLogin, true));
 btnShowSignup.addEventListener("click", () => toggleModal(modalSignup, true));
 btnSettings.addEventListener("click", () => toggleModal(modalChangePass, true)); 
+btnActiveUsers.addEventListener("click", () => toggleModal(modalActiveUsers, true)); 
 closeModals.forEach(btn => btn.addEventListener("click", () => {
     toggleModal(modalLogin, false);
     toggleModal(modalSignup, false);
     toggleModal(modalChangePass, false);
+    toggleModal(modalActiveUsers, false);
 }));
 btnLogout.addEventListener("click", () => signOut(auth));
 
@@ -261,40 +267,34 @@ formSignup.addEventListener("submit", async (e) => {
 
 // --- SPEECH TO TEXT (STT) LOGIC ---
 
-// Check for browser support
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
-  recognition.continuous = false; // Stop listening when they stop speaking
-  recognition.interimResults = true; // Show real-time results
-  recognition.lang = 'en-US'; // Default language
+  recognition.continuous = false;
+  recognition.interimResults = true; 
+  recognition.lang = 'en-US'; 
 
-  // Toggle Recording on button click
   btnMic.addEventListener('click', () => {
     if (btnMic.classList.contains('recording')) {
       recognition.stop();
     } else {
-      // Close other pickers if open
       emojiPickerContainer.classList.add("hidden");
       gifPicker.classList.add("hidden");
       recognition.start();
     }
   });
 
-  // Recording started -> Update UI
   recognition.onstart = function() {
     btnMic.classList.add('recording');
     msgInput.placeholder = "Listening...";
   };
 
-  // Recording ended -> Update UI
   recognition.onend = function() {
     btnMic.classList.remove('recording');
     msgInput.placeholder = "Type a message...";
     msgInput.focus();
   };
 
-  // Handle speech results
   recognition.onresult = function(event) {
     let interimTranscript = '';
     let finalTranscript = '';
@@ -306,7 +306,6 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         interimTranscript += event.results[i][0].transcript;
       }
     }
-    // Update input field with what is being said
     msgInput.value = finalTranscript + interimTranscript;
   };
 
@@ -318,15 +317,12 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     }
   };
 } else {
-  // Browser doesn't support STT
   btnMic.style.display = 'none';
-  console.warn('Speech recognition not supported in this browser.');
 }
 
 
 // --- GIPHY & EMOJI LOGIC ---
 
-// Toggle GIF Picker (closes others)
 btnGif.addEventListener("click", () => {
     emojiPickerContainer.classList.add("hidden");
     if(recognition) recognition.stop();
@@ -337,21 +333,17 @@ btnGif.addEventListener("click", () => {
     }
 });
 
-// Toggle Emoji Picker (closes others)
 btnEmoji.addEventListener("click", () => {
     gifPicker.classList.add("hidden");
     if(recognition) recognition.stop();
     emojiPickerContainer.classList.toggle("hidden");
 });
 
-// Handle Emoji Click
 emojiPicker.addEventListener('emoji-click', event => {
   msgInput.value += event.detail.unicode;
   msgInput.focus();
 });
 
-
-// Close pickers if clicking outside
 document.addEventListener("click", (e) => {
     if (!gifPicker.contains(e.target) && !btnGif.contains(e.target)) {
         gifPicker.classList.add("hidden");
@@ -422,13 +414,27 @@ function renderGifs(gifs) {
 
 // --- CHAT & MESSAGE LOGIC ---
 
-// Common send function for Text or Images
+// NEW: Send typing status
+msgInput.addEventListener('input', () => {
+    if (!currentRoom) return;
+    const uid = auth.currentUser.uid;
+    const typingRef = ref(db, `rooms/${currentRoom}/typing/${uid}`);
+    
+    clearTimeout(typingTimeout);
+    set(typingRef, auth.currentUser.displayName);
+
+    // Remove typing status after 2 seconds of inactivity
+    typingTimeout = setTimeout(() => {
+        remove(typingRef);
+    }, 2000);
+});
+
 async function sendMessage(content, type = 'text') {
   if (!content || !currentRoom) return;
 
   await push(ref(db, `rooms/${currentRoom}/messages`), {
-    text: content, // We re-use the 'text' field for the image URL
-    type: type,    // 'text' or 'image'
+    text: content,
+    type: type,
     sender: auth.currentUser.displayName,
     uid: auth.currentUser.uid,
     createdAt: serverTimestamp()
@@ -437,6 +443,9 @@ async function sendMessage(content, type = 'text') {
   if(type === 'text') {
       msgInput.value = "";
       msgInput.focus();
+      // Clear typing status immediately on send
+      clearTimeout(typingTimeout);
+      remove(ref(db, `rooms/${currentRoom}/typing/${auth.currentUser.uid}`));
   }
   scrollToBottom();
 }
@@ -447,7 +456,7 @@ msgForm.addEventListener("submit", async (e) => {
   await sendMessage(text, 'text');
 });
 
-// Updated UI renderer to handle images
+
 function addMessageToUI(msg) {
   const isSelf = msg.uid === auth.currentUser?.uid;
   const div = document.createElement("div");
@@ -466,6 +475,11 @@ function addMessageToUI(msg) {
   div.innerHTML = `${nameHtml}${contentHtml}${timeHtml}`;
   messagesDiv.appendChild(div);
   scrollToBottom();
+
+  // NEW: Play sound if message is from someone else
+  if (!isSelf) {
+      msgSound.play().catch(e => console.log("Audio play failed (usually due to browser autoplay policy):", e));
+  }
 }
 
 
@@ -590,6 +604,17 @@ async function handleNormalJoinFlow(code) {
 async function enterChat(code) {
   currentRoom = code;
   const uid = auth.currentUser.uid;
+  const displayName = auth.currentUser.displayName;
+
+  // 1. Set presence and setup disconnect handler
+  const onlineRef = ref(db, `rooms/${code}/online/${uid}`);
+  onDisconnect(onlineRef).remove();
+  set(onlineRef, { name: displayName });
+
+  // 2. Also setup disconnect for typing indicator just in case
+  onDisconnect(ref(db, `rooms/${code}/typing/${uid}`)).remove();
+
+  // 3. Normal join logic
   await set(ref(db, `rooms/${code}/allowed/${uid}`), true);
   remove(ref(db, `rooms/${code}/pending/${uid}`));
 
@@ -604,6 +629,7 @@ async function enterChat(code) {
   messagesDiv.innerHTML = "";
   pendingArea.innerHTML = "";
   pendingArea.classList.add("hidden");
+  typingIndicator.classList.add("hidden"); // Hide typing initally
 
   const passSnap = await get(ref(db, `rooms/${code}/metadata/password`));
   if(passSnap.exists()) {
@@ -612,6 +638,7 @@ async function enterChat(code) {
   }
   saveRoomToHistory(code);
 
+  // LISTENERS
   msgListener = onChildAdded(query(ref(db, `rooms/${code}/messages`), limitToLast(50)), (snap) => {
     addMessageToUI(snap.val());
   });
@@ -624,6 +651,41 @@ async function enterChat(code) {
     const el = document.getElementById(`pending-${snap.key}`);
     if (el) el.remove();
     if (pendingArea.children.length === 0) pendingArea.classList.add("hidden");
+  });
+
+  // NEW: Listen for active users
+  activeUsersListener = onValue(ref(db, `rooms/${code}/online`), (snap) => {
+      activeUsersList.innerHTML = "";
+      if(snap.exists()) {
+          snap.forEach(child => {
+              const li = document.createElement("li");
+              li.className = "active-user-item";
+              li.innerHTML = `<span class="online-dot"></span>${child.val().name}`;
+              activeUsersList.appendChild(li);
+          });
+      }
+  });
+
+  // NEW: Listen for typing indicators
+  typingListener = onValue(ref(db, `rooms/${code}/typing`), (snap) => {
+      const typingNames = [];
+      if(snap.exists()) {
+          snap.forEach(child => {
+              if(child.key !== uid) { // Don't show self typing
+                  typingNames.push(child.val());
+              }
+          });
+      }
+
+      if (typingNames.length > 0) {
+          const text = typingNames.length > 2 ? "Several people are typing..." : 
+                       typingNames.join(", ") + (typingNames.length === 1 ? " is typing..." : " are typing...");
+          typingIndicator.textContent = text;
+          typingIndicator.classList.remove("hidden");
+      } else {
+          typingIndicator.classList.add("hidden");
+      }
+      scrollToBottom();
   });
 }
 
@@ -642,13 +704,24 @@ function renderPendingRequest(reqUid, reqName) {
 
 backBtn.addEventListener("click", () => {
   if (currentRoom) {
+    const uid = auth.currentUser.uid;
+    // Remove listeners
     off(query(ref(db, `rooms/${currentRoom}/messages`)));
     off(query(ref(db, `rooms/${currentRoom}/pending`)));
+    off(ref(db, `rooms/${currentRoom}/online`));
+    off(ref(db, `rooms/${currentRoom}/typing`));
     if (approvalListener) off(ref(db, `rooms/${currentRoom}/allowed`)); 
+
+    // Manual cleanup on exit
+    remove(ref(db, `rooms/${currentRoom}/online/${uid}`));
+    remove(ref(db, `rooms/${currentRoom}/typing/${uid}`));
   }
   currentRoom = null;
   msgListener = null;
   pendingListener = null;
+  activeUsersListener = null;
+  typingListener = null;
+
   chatScreen.classList.add("hidden");
   joinScreen.classList.remove("hidden");
   roomPassDisplay.classList.add("hidden");
