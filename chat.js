@@ -212,10 +212,14 @@ btnShowLogin.addEventListener("click", () => toggleModal(modalLogin, true));
 btnShowSignup.addEventListener("click", () => toggleModal(modalSignup, true));
 btnActiveUsers.addEventListener("click", () => toggleModal(modalActiveUsers, true)); 
 
-// Open Settings
+// Open Settings and load email
 btnSettings.addEventListener("click", async () => {
     toggleModal(modalSettings, true);
-    // No longer need to fetch email from DB
+    const uid = auth.currentUser.uid;
+    const emailSnap = await get(ref(db, `users/${uid}/profile/email`));
+    if(emailSnap.exists()) {
+        document.getElementById("settings-email").value = emailSnap.val();
+    }
 });
 
 closeModals.forEach(btn => btn.addEventListener("click", () => {
@@ -227,52 +231,63 @@ closeModals.forEach(btn => btn.addEventListener("click", () => {
 btnLogout.addEventListener("click", () => signOut(auth));
 
 
-// --- PASSWORD MANAGEMENT (REAL EMAIL) ---
+// --- PASSWORD & EMAIL MANAGEMENT ---
 
 btnForgotPass.addEventListener("click", async () => {
-    // Get email from the LOGIN form input
-    const email = document.getElementById("login-email").value.trim();
-    if(!email) {
-        alert("Please enter your email address in the Login box first.");
+    const username = document.getElementById("login-user").value.trim();
+    if(!username) {
+        alert("Please enter your username first.");
         return;
     }
+    const email = `${username}@flochat.com`;
     try {
-        // Send the REAL Firebase reset email
         await sendPasswordResetEmail(auth, email);
-        alert(`Password reset link sent to ${email}. Check your inbox (and spam).`);
+        alert(`Password reset email sent to the email associated with ${username}. Check your inbox (and spam).`);
         toggleModal(modalLogin, false);
     } catch (error) {
         alert("Error sending reset email: " + error.message);
     }
 });
 
-// Settings Form Handler (Password Only)
+// Updated Settings Form Handler (Password + Email)
 formSettings.addEventListener("submit", async (e) => {
     e.preventDefault();
     const newPass = document.getElementById("new-pass").value;
+    const newEmail = document.getElementById("settings-email").value.trim();
     const user = auth.currentUser;
 
     if(!user) return;
-    if(!newPass) {
-        alert("Please enter a new password to change it.");
-        return;
-    }
 
+    let updates = [];
     try {
-        await updatePassword(user, newPass);
-        alert("Password updated successfully!");
+        // Update Password if provided
+        if(newPass) {
+            updates.push(updatePassword(user, newPass).then(() => "Password updated."));
+        }
+        // Update Email in DB
+        if(newEmail !== "") {
+             updates.push(set(ref(db, `users/${user.uid}/profile/email`), newEmail).then(() => "Email saved."));
+        } else {
+            // If cleared, remove it
+             updates.push(remove(ref(db, `users/${user.uid}/profile/email`)).then(() => "Email removed."));
+        }
+
+        const results = await Promise.all(updates);
+        alert(results.join("\n"));
         toggleModal(modalSettings, false);
+
     } catch (error) {
-        alert("Error updating password: " + error.message + " (You may need to re-login first).");
+        alert("Error updating settings: " + error.message + " (If changing password, you may need to re-login first).");
     }
 });
 
 
-// --- AUTH FORMS (REAL EMAIL) ---
+// --- AUTH FORMS (USERNAME BASED) ---
 formLogin.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = document.getElementById("login-email").value.trim();
+    const username = document.getElementById("login-user").value.trim();
     const pass = document.getElementById("login-pass").value;
+    const email = `${username}@flochat.com`;
 
     try {
         await signInWithEmailAndPassword(auth, email, pass);
@@ -282,28 +297,28 @@ formLogin.addEventListener("submit", async (e) => {
     }
 });
 
+// Updated Signup Form Handler (Saves Email to DB)
 formSignup.addEventListener("submit", async (e) => {
     e.preventDefault();
-    // Get real email and display name
-    const email = document.getElementById("signup-email").value.trim();
-    const displayName = document.getElementById("signup-name").value.trim();
+    const username = document.getElementById("signup-user").value.trim();
     const pass = document.getElementById("signup-pass").value;
-
-    if(!email || !displayName || !pass) {
-        alert("Please fill in all fields.");
-        return;
-    }
+    const emailOptional = document.getElementById("signup-email").value.trim();
+    
+    const fakeAuthEmail = `${username}@flochat.com`; 
 
     try {
-        // Create user with REAL email
-        const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-        // Set their display name
-        await updateProfile(userCred.user, { displayName: displayName });
+        const userCred = await createUserWithEmailAndPassword(auth, fakeAuthEmail, pass);
+        await updateProfile(userCred.user, { displayName: username });
         
+        // SAVE OPTIONAL EMAIL TO DB
+        if(emailOptional) {
+             await set(ref(db, `users/${userCred.user.uid}/profile/email`), emailOptional);
+        }
+
         toggleModal(modalSignup, false);
     } catch (err) {
         if (err.code === 'auth/email-already-in-use') {
-            alert("That email is already in use.");
+            alert("That username is already taken.");
         } else if (err.code === 'auth/weak-password') {
              alert("Password should be at least 6 characters.");
         } else {
