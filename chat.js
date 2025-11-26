@@ -25,7 +25,7 @@ import {
   limitToLast,
   serverTimestamp,
   off,
-  onDisconnect // NEW IMPORT
+  onDisconnect
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 // --- Config ---
@@ -56,7 +56,8 @@ const chatScreen = document.getElementById("chat-screen");
 // Modals
 const modalLogin = document.getElementById("modal-login");
 const modalSignup = document.getElementById("modal-signup");
-const modalChangePass = document.getElementById("modal-change-pass");
+// Renamed variable for clarity
+const modalSettings = document.getElementById("modal-change-pass"); 
 const modalActiveUsers = document.getElementById("modal-active-users");
 const btnShowLogin = document.getElementById("btn-show-login");
 const btnShowSignup = document.getElementById("btn-show-signup");
@@ -65,7 +66,8 @@ const closeModals = document.querySelectorAll(".close-modal");
 // Forms & Inputs
 const formLogin = document.getElementById("form-login");
 const formSignup = document.getElementById("form-signup");
-const formChangePass = document.getElementById("form-change-pass");
+// Renamed variable
+const formSettings = document.getElementById("form-change-pass");
 const btnLogout = document.getElementById("btn-logout");
 const btnSettings = document.getElementById("btn-settings");
 const btnForgotPass = document.getElementById("btn-forgot-pass");
@@ -88,7 +90,7 @@ const welcomeMsg = document.getElementById("welcome-msg");
 const joinStatus = document.getElementById("join-status");
 const typingIndicator = document.getElementById("typing-indicator");
 const activeUsersList = document.getElementById("active-users-list");
-const msgSound = document.getElementById("msg-sound"); // NEW
+const msgSound = document.getElementById("msg-sound");
 
 
 // GIF, Emoji, Mic Elements
@@ -107,7 +109,8 @@ let currentRoom = null;
 let msgListener = null;
 let pendingListener = null;
 let approvalListener = null;
-let activeUsersListener = null; 
+let activeUsersAddListener = null; 
+let activeUsersRemoveListener = null; 
 let typingListener = null; 
 const MASTER_PASS = "admin 67";
 let gifSearchTimeout = null;
@@ -133,9 +136,17 @@ function toggleModal(modal, show) {
   if(!show) {
       formLogin.reset();
       formSignup.reset();
-      formChangePass.reset();
+      // Reset settings form on close
+      formSettings.reset();
   }
 }
+
+// Helper to play sound
+function playBeep() {
+    msgSound.currentTime = 0;
+    msgSound.play().catch(e => console.log("Audio play prevented:", e));
+}
+
 
 function generateRoomPassword() {
     return Math.random().toString(36).substring(2, 8);
@@ -182,18 +193,28 @@ onAuthStateChanged(auth, (user) => {
 // Button Event Listeners
 btnShowLogin.addEventListener("click", () => toggleModal(modalLogin, true));
 btnShowSignup.addEventListener("click", () => toggleModal(modalSignup, true));
-btnSettings.addEventListener("click", () => toggleModal(modalChangePass, true)); 
 btnActiveUsers.addEventListener("click", () => toggleModal(modalActiveUsers, true)); 
+
+// Open Settings and load email
+btnSettings.addEventListener("click", async () => {
+    toggleModal(modalSettings, true);
+    const uid = auth.currentUser.uid;
+    const emailSnap = await get(ref(db, `users/${uid}/profile/email`));
+    if(emailSnap.exists()) {
+        document.getElementById("settings-email").value = emailSnap.val();
+    }
+});
+
 closeModals.forEach(btn => btn.addEventListener("click", () => {
     toggleModal(modalLogin, false);
     toggleModal(modalSignup, false);
-    toggleModal(modalChangePass, false);
+    toggleModal(modalSettings, false);
     toggleModal(modalActiveUsers, false);
 }));
 btnLogout.addEventListener("click", () => signOut(auth));
 
 
-// --- PASSWORD MANAGEMENT ---
+// --- PASSWORD & EMAIL MANAGEMENT ---
 
 btnForgotPass.addEventListener("click", async () => {
     const username = document.getElementById("login-user").value.trim();
@@ -211,19 +232,35 @@ btnForgotPass.addEventListener("click", async () => {
     }
 });
 
-formChangePass.addEventListener("submit", async (e) => {
+// Updated Settings Form Handler (Password + Email)
+formSettings.addEventListener("submit", async (e) => {
     e.preventDefault();
     const newPass = document.getElementById("new-pass").value;
+    const newEmail = document.getElementById("settings-email").value.trim();
     const user = auth.currentUser;
 
-    if(user) {
-        try {
-            await updatePassword(user, newPass);
-            alert("Password updated successfully!");
-            toggleModal(modalChangePass, false);
-        } catch (error) {
-            alert("Error updating password: " + error.message + " (You may need to log out and back in first).");
+    if(!user) return;
+
+    let updates = [];
+    try {
+        // Update Password if provided
+        if(newPass) {
+            updates.push(updatePassword(user, newPass).then(() => "Password updated."));
         }
+        // Update Email in DB
+        if(newEmail !== "") {
+             updates.push(set(ref(db, `users/${user.uid}/profile/email`), newEmail).then(() => "Email saved."));
+        } else {
+            // If cleared, remove it
+             updates.push(remove(ref(db, `users/${user.uid}/profile/email`)).then(() => "Email removed."));
+        }
+
+        const results = await Promise.all(updates);
+        alert(results.join("\n"));
+        toggleModal(modalSettings, false);
+
+    } catch (error) {
+        alert("Error updating settings: " + error.message + " (If changing password, you may need to re-login first).");
     }
 });
 
@@ -243,15 +280,24 @@ formLogin.addEventListener("submit", async (e) => {
     }
 });
 
+// Updated Signup Form Handler (Saves Email to DB)
 formSignup.addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("signup-user").value.trim();
     const pass = document.getElementById("signup-pass").value;
-    const email = `${username}@flochat.com`; 
+    const emailOptional = document.getElementById("signup-email").value.trim();
+    // We still use the fake email for firebase auth login for now
+    const fakeAuthEmail = `${username}@flochat.com`; 
 
     try {
-        const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+        const userCred = await createUserWithEmailAndPassword(auth, fakeAuthEmail, pass);
         await updateProfile(userCred.user, { displayName: username });
+        
+        // SAVE OPTIONAL EMAIL TO DB
+        if(emailOptional) {
+             await set(ref(db, `users/${userCred.user.uid}/profile/email`), emailOptional);
+        }
+
         toggleModal(modalSignup, false);
     } catch (err) {
         if (err.code === 'auth/email-already-in-use') {
@@ -414,7 +460,6 @@ function renderGifs(gifs) {
 
 // --- CHAT & MESSAGE LOGIC ---
 
-// NEW: Send typing status
 msgInput.addEventListener('input', () => {
     if (!currentRoom) return;
     const uid = auth.currentUser.uid;
@@ -423,7 +468,6 @@ msgInput.addEventListener('input', () => {
     clearTimeout(typingTimeout);
     set(typingRef, auth.currentUser.displayName);
 
-    // Remove typing status after 2 seconds of inactivity
     typingTimeout = setTimeout(() => {
         remove(typingRef);
     }, 2000);
@@ -443,7 +487,6 @@ async function sendMessage(content, type = 'text') {
   if(type === 'text') {
       msgInput.value = "";
       msgInput.focus();
-      // Clear typing status immediately on send
       clearTimeout(typingTimeout);
       remove(ref(db, `rooms/${currentRoom}/typing/${auth.currentUser.uid}`));
   }
@@ -476,9 +519,9 @@ function addMessageToUI(msg) {
   messagesDiv.appendChild(div);
   scrollToBottom();
 
-  // NEW: Play sound if message is from someone else
+  // Play sound if message is from someone else
   if (!isSelf) {
-      msgSound.play().catch(e => console.log("Audio play failed (usually due to browser autoplay policy):", e));
+      playBeep();
   }
 }
 
@@ -606,6 +649,9 @@ async function enterChat(code) {
   const uid = auth.currentUser.uid;
   const displayName = auth.currentUser.displayName;
 
+  // Clear list so we don't get duplicate beeps on re-entry
+  activeUsersList.innerHTML = "";
+
   // 1. Set presence and setup disconnect handler
   const onlineRef = ref(db, `rooms/${code}/online/${uid}`);
   onDisconnect(onlineRef).remove();
@@ -629,7 +675,7 @@ async function enterChat(code) {
   messagesDiv.innerHTML = "";
   pendingArea.innerHTML = "";
   pendingArea.classList.add("hidden");
-  typingIndicator.classList.add("hidden"); // Hide typing initally
+  typingIndicator.classList.add("hidden");
 
   const passSnap = await get(ref(db, `rooms/${code}/metadata/password`));
   if(passSnap.exists()) {
@@ -653,25 +699,41 @@ async function enterChat(code) {
     if (pendingArea.children.length === 0) pendingArea.classList.add("hidden");
   });
 
-  // NEW: Listen for active users
-  activeUsersListener = onValue(ref(db, `rooms/${code}/online`), (snap) => {
-      activeUsersList.innerHTML = "";
-      if(snap.exists()) {
-          snap.forEach(child => {
-              const li = document.createElement("li");
-              li.className = "active-user-item";
-              li.innerHTML = `<span class="online-dot"></span>${child.val().name}`;
-              activeUsersList.appendChild(li);
-          });
+  // NEW: Listen for active users ADDED (Join beep)
+  activeUsersAddListener = onChildAdded(ref(db, `rooms/${code}/online`), (snap) => {
+      const userUid = snap.key;
+      const userData = snap.val();
+      
+      // Add to UI list
+      const li = document.createElement("li");
+      li.id = `online-${userUid}`;
+      li.className = "active-user-item";
+      li.innerHTML = `<span class="online-dot"></span>${userData.name}`;
+      activeUsersList.appendChild(li);
+
+      // Play beep if it's someone else joining
+      if (userUid !== uid) {
+         playBeep();
       }
   });
 
-  // NEW: Listen for typing indicators
+  // NEW: Listen for active users REMOVED (Leave beep)
+  activeUsersRemoveListener = onChildRemoved(ref(db, `rooms/${code}/online`), (snap) => {
+      const userUid = snap.key;
+      const el = document.getElementById(`online-${userUid}`);
+      if(el) el.remove();
+
+      // Play beep on leave
+      playBeep();
+  });
+
+
+  // Listen for typing indicators
   typingListener = onValue(ref(db, `rooms/${code}/typing`), (snap) => {
       const typingNames = [];
       if(snap.exists()) {
           snap.forEach(child => {
-              if(child.key !== uid) { // Don't show self typing
+              if(child.key !== uid) { 
                   typingNames.push(child.val());
               }
           });
@@ -708,7 +770,7 @@ backBtn.addEventListener("click", () => {
     // Remove listeners
     off(query(ref(db, `rooms/${currentRoom}/messages`)));
     off(query(ref(db, `rooms/${currentRoom}/pending`)));
-    off(ref(db, `rooms/${currentRoom}/online`));
+    off(ref(db, `rooms/${currentRoom}/online`)); // Clears both child listeners
     off(ref(db, `rooms/${currentRoom}/typing`));
     if (approvalListener) off(ref(db, `rooms/${currentRoom}/allowed`)); 
 
@@ -719,7 +781,8 @@ backBtn.addEventListener("click", () => {
   currentRoom = null;
   msgListener = null;
   pendingListener = null;
-  activeUsersListener = null;
+  activeUsersAddListener = null;
+  activeUsersRemoveListener = null;
   typingListener = null;
 
   chatScreen.classList.add("hidden");
