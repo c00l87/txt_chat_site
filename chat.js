@@ -1,3 +1,6 @@
+// IMPORT EMOJI PICKER WEB COMPONENT
+import 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js';
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import {
   getAuth,
@@ -37,7 +40,7 @@ const firebaseConfig = {
 };
 
 // --- GIPHY CONFIG (IMPORTANT: REPLACE WITH YOUR KEY) ---
-const GIPHY_API_KEY = "BBK6dAhShZbf3u9nE2rjOfmPX2NB4HgF"; 
+const GIPHY_API_KEY = "YOUR_GIPHY_API_KEY_HERE"; 
 const GIPHY_BASE_URL = "https://api.giphy.com/v1/gifs";
 
 
@@ -81,11 +84,14 @@ const backBtn = document.getElementById("back-btn");
 const welcomeMsg = document.getElementById("welcome-msg");
 const joinStatus = document.getElementById("join-status");
 
-// GIF Elements
+// GIF & Emoji Elements
 const btnGif = document.getElementById("btn-gif");
 const gifPicker = document.getElementById("gif-picker");
 const gifSearchInput = document.getElementById("gif-search-input");
 const gifResults = document.getElementById("gif-results");
+const btnEmoji = document.getElementById("btn-emoji"); // NEW
+const emojiPickerContainer = document.getElementById("emoji-picker-container"); // NEW
+const emojiPicker = document.querySelector("emoji-picker"); // NEW
 
 
 // State
@@ -111,7 +117,6 @@ function scrollToBottom() {
 
 function toggleModal(modal, show) {
   modal.classList.toggle("hidden", !show);
-  // Reset forms on close
   if(!show) {
       formLogin.reset();
       formSignup.reset();
@@ -143,7 +148,7 @@ onAuthStateChanged(auth, (user) => {
 // Button Event Listeners
 btnShowLogin.addEventListener("click", () => toggleModal(modalLogin, true));
 btnShowSignup.addEventListener("click", () => toggleModal(modalSignup, true));
-btnSettings.addEventListener("click", () => toggleModal(modalChangePass, true)); // Show change pass modal
+btnSettings.addEventListener("click", () => toggleModal(modalChangePass, true)); 
 closeModals.forEach(btn => btn.addEventListener("click", () => {
     toggleModal(modalLogin, false);
     toggleModal(modalSignup, false);
@@ -154,7 +159,6 @@ btnLogout.addEventListener("click", () => signOut(auth));
 
 // --- PASSWORD MANAGEMENT ---
 
-// 1. Forgot Password (send reset email)
 btnForgotPass.addEventListener("click", async () => {
     const username = document.getElementById("login-user").value.trim();
     if(!username) {
@@ -171,7 +175,6 @@ btnForgotPass.addEventListener("click", async () => {
     }
 });
 
-// 2. Change Password (when logged in)
 formChangePass.addEventListener("submit", async (e) => {
     e.preventDefault();
     const newPass = document.getElementById("new-pass").value;
@@ -183,7 +186,6 @@ formChangePass.addEventListener("submit", async (e) => {
             alert("Password updated successfully!");
             toggleModal(modalChangePass, false);
         } catch (error) {
-            // Note: Firebase might require re-authentication if it's been too long.
             alert("Error updating password: " + error.message + " (You may need to log out and back in first).");
         }
     }
@@ -227,10 +229,11 @@ formSignup.addEventListener("submit", async (e) => {
 });
 
 
-// --- GIPHY LOGIC ---
+// --- GIPHY & EMOJI LOGIC ---
 
-// Toggle Picker
+// Toggle GIF Picker (closes Emoji picker)
 btnGif.addEventListener("click", () => {
+    emojiPickerContainer.classList.add("hidden"); // Close emoji
     gifPicker.classList.toggle("hidden");
     if (!gifPicker.classList.contains("hidden")) {
         loadTrendingGifs();
@@ -238,10 +241,28 @@ btnGif.addEventListener("click", () => {
     }
 });
 
-// Close picker if clicking outside
+// Toggle Emoji Picker (closes GIF picker)
+btnEmoji.addEventListener("click", () => {
+    gifPicker.classList.add("hidden"); // Close GIF
+    emojiPickerContainer.classList.toggle("hidden");
+});
+
+// Handle Emoji Click
+emojiPicker.addEventListener('emoji-click', event => {
+  msgInput.value += event.detail.unicode;
+  msgInput.focus();
+});
+
+
+// Close pickers if clicking outside
 document.addEventListener("click", (e) => {
+    // Close GIF picker if click is outside gif picker AND outside gif button
     if (!gifPicker.contains(e.target) && !btnGif.contains(e.target)) {
         gifPicker.classList.add("hidden");
+    }
+    // Close Emoji picker if click is outside emoji picker AND outside emoji button
+    if (!emojiPickerContainer.contains(e.target) && !btnEmoji.contains(e.target)) {
+        emojiPickerContainer.classList.add("hidden");
     }
 });
 
@@ -380,7 +401,6 @@ async function loadRoomHistory() {
   }
 }
 
-// UPDATED: Click handler checks for access before prompting for password
 function renderHistoryItem(code) {
   const li = document.createElement("li");
   li.className = "history-item";
@@ -394,7 +414,6 @@ function renderHistoryItem(code) {
 
     roomCodeInput.value = code;
     
-    // UI feedback
     joinStatus.textContent = "Checking access permissions...";
     joinStatus.classList.remove("hidden");
     joinStatus.style.color = "var(--primary)";
@@ -402,15 +421,12 @@ function renderHistoryItem(code) {
     li.style.opacity = "0.6";
 
     try {
-        // Check if allowed
         const allowedSnap = await get(ref(db, `rooms/${code}/allowed/${uid}`));
 
         if (allowedSnap.exists()) {
-            // Allowed -> Join directly
             joinStatus.textContent = "Access granted. Joining...";
             await enterChat(code);
         } else {
-            // Not allowed -> Prompt for password
             roomPasswordInput.focus();
             joinStatus.textContent = "Please enter room password to rejoin.";
         }
@@ -547,6 +563,7 @@ backBtn.addEventListener("click", () => {
   chatScreen.classList.add("hidden");
   joinScreen.classList.remove("hidden");
   roomPassDisplay.classList.add("hidden");
-  gifPicker.classList.add("hidden"); // Hide GIF picker on exit
+  gifPicker.classList.add("hidden"); 
+  emojiPickerContainer.classList.add("hidden"); // Hide emoji picker on exit
   loadRoomHistory();
 });
