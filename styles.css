@@ -183,12 +183,24 @@ input:focus { border-color: var(--primary); background: #fff; }
 .msg:has(.msg-image) { padding: 5px; background: transparent; }
 .msg.self:has(.msg-image) .sender-name, .msg.self:has(.msg-image) .msg-time { color: var(--text-sub); padding: 0 5px;}
 
-/* Input Area, GIF & Emoji Pickers */
+/* Input Area, GIF, Emoji, Mic Pickers */
 .input-area {
   flex-shrink: 0; display: flex; gap: 5px; padding: 10px 15px; background: #fff; border-top: 1px solid #f0f0f0; position: relative;
   padding-bottom: env(safe-area-inset-bottom, 20px); 
 }
-.gif-btn, .emoji-btn { color: var(--text-sub); padding: 8px; }
+.gif-btn, .emoji-btn, .mic-btn { color: var(--text-sub); padding: 8px; }
+
+/* NEW: Microphone Recording State */
+.mic-btn.recording {
+    color: var(--danger);
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 
 /* General Picker Styles */
 .gif-picker, .emoji-picker-container {

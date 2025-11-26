@@ -1,4 +1,3 @@
-// IMPORT EMOJI PICKER WEB COMPONENT
 import 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js';
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
@@ -39,7 +38,7 @@ const firebaseConfig = {
   appId: "1:316750632828:web:cfab60d020d90d01dcb6f9"
 };
 
-// --- GIPHY CONFIG (IMPORTANT: REPLACE WITH YOUR KEY) ---
+// --- GIPHY CONFIG ---
 const GIPHY_API_KEY = "BBK6dAhShZbf3u9nE2rjOfmPX2NB4HgF"; 
 const GIPHY_BASE_URL = "https://api.giphy.com/v1/gifs";
 
@@ -84,14 +83,15 @@ const backBtn = document.getElementById("back-btn");
 const welcomeMsg = document.getElementById("welcome-msg");
 const joinStatus = document.getElementById("join-status");
 
-// GIF & Emoji Elements
+// GIF, Emoji, Mic Elements
 const btnGif = document.getElementById("btn-gif");
 const gifPicker = document.getElementById("gif-picker");
 const gifSearchInput = document.getElementById("gif-search-input");
 const gifResults = document.getElementById("gif-results");
-const btnEmoji = document.getElementById("btn-emoji"); // NEW
-const emojiPickerContainer = document.getElementById("emoji-picker-container"); // NEW
-const emojiPicker = document.querySelector("emoji-picker"); // NEW
+const btnEmoji = document.getElementById("btn-emoji");
+const emojiPickerContainer = document.getElementById("emoji-picker-container");
+const emojiPicker = document.querySelector("emoji-picker");
+const btnMic = document.getElementById("btn-mic"); // NEW
 
 
 // State
@@ -101,6 +101,7 @@ let pendingListener = null;
 let approvalListener = null;
 const MASTER_PASS = "admin 67";
 let gifSearchTimeout = null;
+let recognition = null; // For speech recognition
 
 
 // --- UTILS ---
@@ -229,11 +230,77 @@ formSignup.addEventListener("submit", async (e) => {
 });
 
 
+// --- SPEECH TO TEXT (STT) LOGIC ---
+
+// Check for browser support
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = false; // Stop listening when they stop speaking
+  recognition.interimResults = true; // Show real-time results
+  recognition.lang = 'en-US'; // Default language
+
+  // Toggle Recording on button click
+  btnMic.addEventListener('click', () => {
+    if (btnMic.classList.contains('recording')) {
+      recognition.stop();
+    } else {
+      // Close other pickers if open
+      emojiPickerContainer.classList.add("hidden");
+      gifPicker.classList.add("hidden");
+      recognition.start();
+    }
+  });
+
+  // Recording started -> Update UI
+  recognition.onstart = function() {
+    btnMic.classList.add('recording');
+    msgInput.placeholder = "Listening...";
+  };
+
+  // Recording ended -> Update UI
+  recognition.onend = function() {
+    btnMic.classList.remove('recording');
+    msgInput.placeholder = "Type a message...";
+    msgInput.focus();
+  };
+
+  // Handle speech results
+  recognition.onresult = function(event) {
+    let interimTranscript = '';
+    let finalTranscript = '';
+
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+      }
+    }
+    // Update input field with what is being said
+    msgInput.value = finalTranscript + interimTranscript;
+  };
+
+  recognition.onerror = function(event) {
+    console.error('Speech recognition error', event.error);
+    recognition.stop();
+    if(event.error === 'not-allowed') {
+        alert("Microphone access denied. Please allow microphone access to use speech-to-text.");
+    }
+  };
+} else {
+  // Browser doesn't support STT
+  btnMic.style.display = 'none';
+  console.warn('Speech recognition not supported in this browser.');
+}
+
+
 // --- GIPHY & EMOJI LOGIC ---
 
-// Toggle GIF Picker (closes Emoji picker)
+// Toggle GIF Picker (closes others)
 btnGif.addEventListener("click", () => {
-    emojiPickerContainer.classList.add("hidden"); // Close emoji
+    emojiPickerContainer.classList.add("hidden");
+    if(recognition) recognition.stop();
     gifPicker.classList.toggle("hidden");
     if (!gifPicker.classList.contains("hidden")) {
         loadTrendingGifs();
@@ -241,9 +308,10 @@ btnGif.addEventListener("click", () => {
     }
 });
 
-// Toggle Emoji Picker (closes GIF picker)
+// Toggle Emoji Picker (closes others)
 btnEmoji.addEventListener("click", () => {
-    gifPicker.classList.add("hidden"); // Close GIF
+    gifPicker.classList.add("hidden");
+    if(recognition) recognition.stop();
     emojiPickerContainer.classList.toggle("hidden");
 });
 
@@ -256,23 +324,15 @@ emojiPicker.addEventListener('emoji-click', event => {
 
 // Close pickers if clicking outside
 document.addEventListener("click", (e) => {
-    // Close GIF picker if click is outside gif picker AND outside gif button
     if (!gifPicker.contains(e.target) && !btnGif.contains(e.target)) {
         gifPicker.classList.add("hidden");
     }
-    // Close Emoji picker if click is outside emoji picker AND outside emoji button
     if (!emojiPickerContainer.contains(e.target) && !btnEmoji.contains(e.target)) {
         emojiPickerContainer.classList.add("hidden");
     }
 });
 
 async function fetchGifs(endpoint, params = {}) {
-    if(GIPHY_API_KEY === "YOUR_GIPHY_API_KEY_HERE") {
-        console.error("Giphy API Key missing!");
-        gifResults.innerHTML = "<p style='padding:10px; color: red;'>API Key Missing</p>";
-        return;
-    }
-    
     const url = new URL(`${GIPHY_BASE_URL}/${endpoint}`);
     url.searchParams.append("api_key", GIPHY_API_KEY);
     url.searchParams.append("limit", 15);
@@ -564,6 +624,6 @@ backBtn.addEventListener("click", () => {
   joinScreen.classList.remove("hidden");
   roomPassDisplay.classList.add("hidden");
   gifPicker.classList.add("hidden"); 
-  emojiPickerContainer.classList.add("hidden"); // Hide emoji picker on exit
+  emojiPickerContainer.classList.add("hidden");
   loadRoomHistory();
 });
