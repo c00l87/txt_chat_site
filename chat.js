@@ -6,8 +6,8 @@ import {
   updateProfile,
   onAuthStateChanged,
   signOut,
-  sendPasswordResetEmail, // NEW
-  updatePassword // NEW
+  sendPasswordResetEmail,
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   getDatabase,
@@ -37,7 +37,7 @@ const firebaseConfig = {
 };
 
 // --- GIPHY CONFIG (IMPORTANT: REPLACE WITH YOUR KEY) ---
-const GIPHY_API_KEY = "YOUR_GIPHY_API_KEY_HERE"; 
+const GIPHY_API_KEY = "BBK6dAhShZbf3u9nE2rjOfmPX2NB4HgF"; 
 const GIPHY_BASE_URL = "https://api.giphy.com/v1/gifs";
 
 
@@ -53,7 +53,7 @@ const chatScreen = document.getElementById("chat-screen");
 // Modals
 const modalLogin = document.getElementById("modal-login");
 const modalSignup = document.getElementById("modal-signup");
-const modalChangePass = document.getElementById("modal-change-pass"); // NEW
+const modalChangePass = document.getElementById("modal-change-pass");
 const btnShowLogin = document.getElementById("btn-show-login");
 const btnShowSignup = document.getElementById("btn-show-signup");
 const closeModals = document.querySelectorAll(".close-modal");
@@ -61,10 +61,10 @@ const closeModals = document.querySelectorAll(".close-modal");
 // Forms & Inputs
 const formLogin = document.getElementById("form-login");
 const formSignup = document.getElementById("form-signup");
-const formChangePass = document.getElementById("form-change-pass"); // NEW
+const formChangePass = document.getElementById("form-change-pass");
 const btnLogout = document.getElementById("btn-logout");
-const btnSettings = document.getElementById("btn-settings"); // NEW
-const btnForgotPass = document.getElementById("btn-forgot-pass"); // NEW
+const btnSettings = document.getElementById("btn-settings");
+const btnForgotPass = document.getElementById("btn-forgot-pass");
 
 const joinForm = document.getElementById("join-form");
 const msgForm = document.getElementById("msg-form");
@@ -184,7 +184,6 @@ formChangePass.addEventListener("submit", async (e) => {
             toggleModal(modalChangePass, false);
         } catch (error) {
             // Note: Firebase might require re-authentication if it's been too long.
-            // For simplicity, we just show the error here.
             alert("Error updating password: " + error.message + " (You may need to log out and back in first).");
         }
     }
@@ -247,7 +246,7 @@ document.addEventListener("click", (e) => {
 });
 
 async function fetchGifs(endpoint, params = {}) {
-    if(GIPHY_API_KEY === "BBK6dAhShZbf3u9nE2rjOfmPX2NB4HgF") {
+    if(GIPHY_API_KEY === "YOUR_GIPHY_API_KEY_HERE") {
         console.error("Giphy API Key missing!");
         gifResults.innerHTML = "<p style='padding:10px; color: red;'>API Key Missing</p>";
         return;
@@ -360,7 +359,7 @@ function addMessageToUI(msg) {
 }
 
 
-// --- ROOM JOINING & HISTORY (Mostly Unchanged from previous version) ---
+// --- ROOM JOINING & HISTORY ---
 
 async function saveRoomToHistory(code) {
   const uid = auth.currentUser?.uid;
@@ -381,15 +380,51 @@ async function loadRoomHistory() {
   }
 }
 
+// UPDATED: Click handler checks for access before prompting for password
 function renderHistoryItem(code) {
   const li = document.createElement("li");
   li.className = "history-item";
   li.innerHTML = `<span class="history-room">#${code}</span><button class="delete-btn">×</button>`;
-  li.addEventListener("click", (e) => {
-    if (!e.target.classList.contains("delete-btn")) {
-        roomCodeInput.value = code; roomPasswordInput.focus(); 
+  
+  li.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("delete-btn")) return;
+
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    roomCodeInput.value = code;
+    
+    // UI feedback
+    joinStatus.textContent = "Checking access permissions...";
+    joinStatus.classList.remove("hidden");
+    joinStatus.style.color = "var(--primary)";
+    li.style.pointerEvents = "none"; 
+    li.style.opacity = "0.6";
+
+    try {
+        // Check if allowed
+        const allowedSnap = await get(ref(db, `rooms/${code}/allowed/${uid}`));
+
+        if (allowedSnap.exists()) {
+            // Allowed -> Join directly
+            joinStatus.textContent = "Access granted. Joining...";
+            await enterChat(code);
+        } else {
+            // Not allowed -> Prompt for password
+            roomPasswordInput.focus();
+            joinStatus.textContent = "Please enter room password to rejoin.";
+        }
+    } catch (err) {
+        console.error("Error checking access:", err);
+        joinStatus.textContent = "Error checking access. Please try manually.";
+        joinStatus.style.color = "var(--danger)";
+        roomPasswordInput.focus();
+    } finally {
+        li.style.pointerEvents = "auto";
+        li.style.opacity = "1";
     }
   });
+
   li.querySelector(".delete-btn").addEventListener("click", async (e) => {
     e.stopPropagation(); const uid = auth.currentUser?.uid;
     await remove(ref(db, `users/${uid}/history/${code}`)); li.remove();
