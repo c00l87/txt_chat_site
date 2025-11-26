@@ -6,30 +6,42 @@
     <title>FloChat</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
   </head>
 
   <body>
     <div class="app-container">
       
-      <section id="join-screen" class="screen fade-in">
+      <section id="auth-screen" class="screen fade-in">
         <header>
             <h1>FloChat</h1>
+            <p class="subtitle">Secure, sleek messaging.</p>
+        </header>
+        <div class="center-content">
+            <div class="card">
+                <button id="btn-show-login" class="btn-primary">Log In</button>
+                <button id="btn-show-signup" class="btn-secondary">Create Account</button>
+            </div>
+        </div>
+      </section>
+
+      <section id="join-screen" class="screen hidden">
+        <header>
+            <h1>FloChat</h1>
+            <button id="btn-logout" class="text-btn">Log Out</button>
         </header>
         <div class="center-content">
             <div class="card">
             <h2>Join a Room</h2>
-            <p class="subtitle">Enter a code to chat anonymously.</p>
+            <p id="welcome-msg" class="subtitle">Welcome back.</p>
 
             <form id="join-form">
                 <div class="input-group">
-                <input id="display-name" placeholder="Your Name" required />
+                  <input id="room-code" placeholder="Room Code (e.g. pizza)" required />
                 </div>
-                <div class="input-group">
-                <input id="room-code" placeholder="Room Code (e.g. pizza)" required />
-                </div>
-                <button type="submit" class="btn-primary">Join Room</button>
+                <button type="submit" class="btn-primary">Enter Room</button>
+                <p id="join-status" class="status-text hidden"></p>
             </form>
 
             <div id="history-container" class="hidden">
@@ -45,11 +57,14 @@
           <button id="back-btn" class="icon-btn">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
           </button>
-          <h2 id="room-title">Room Name</h2>
-          <div class="spacer" style="width: 24px;"></div> </div>
+          <h2 id="room-title">Room</h2>
+          <div class="spacer" style="width: 24px;"></div>
+        </div>
 
-        <div id="messages" class="messages-area">
+        <div id="pending-area" class="pending-container hidden">
             </div>
+
+        <div id="messages" class="messages-area"></div>
 
         <form id="msg-form" class="input-area">
           <input id="msg-input" placeholder="Type a message..." autocomplete="off" />
@@ -58,6 +73,31 @@
           </button>
         </form>
       </section>
+
+    </div>
+
+    <div id="modal-login" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Log In</h2>
+            <form id="form-login">
+                <input id="login-user" placeholder="Username" required />
+                <input id="login-pass" type="password" placeholder="Password" required />
+                <button type="submit" class="btn-primary">Go</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-signup" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Create Account</h2>
+            <form id="form-signup">
+                <input id="signup-user" placeholder="Choose Username" required />
+                <input id="signup-pass" type="password" placeholder="Password" required />
+                <button type="submit" class="btn-primary">Create</button>
+            </form>
+        </div>
     </div>
 
     <script type="module" src="chat.js"></script>

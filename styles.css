@@ -1,5 +1,6 @@
 :root {
   --primary: #007AFF;
+  --primary-dark: #0063cc;
   --bg-color: #f0f2f5;
   --card-bg: #ffffff;
   --text-main: #111;
@@ -7,6 +8,7 @@
   --bubble-self: #007AFF;
   --bubble-other: #E9E9EB;
   --danger: #ff3b30;
+  --success: #34c759;
 }
 
 * { box-sizing: border-box; }
@@ -15,9 +17,8 @@ html, body {
   margin: 0;
   padding: 0;
   width: 100%;
-  /* 100dvh ignores the mobile address bar overlay issues */
   height: 100dvh; 
-  overflow: hidden; /* Prevent the whole page from scrolling */
+  overflow: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: var(--bg-color);
   color: var(--text-main);
@@ -40,7 +41,6 @@ body {
   overflow: hidden;
 }
 
-/* On Desktop, make it look like a floating app */
 @media (min-width: 500px) {
   .app-container {
     height: 85vh;
@@ -62,54 +62,54 @@ body {
 .fade-in { animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; }}
 
-/* JOIN SCREEN STYLES */
-#join-screen header {
-  padding: 20px;
-  text-align: center;
-}
-#join-screen h1 { margin: 0; color: var(--primary); font-size: 1.5rem; }
+/* AUTH & JOIN SCREENS */
+header { padding: 20px; text-align: center; position: relative; }
+h1 { margin: 0; color: var(--primary); font-size: 1.8rem; letter-spacing: -0.5px; }
+.text-btn { background: none; border: none; color: var(--text-sub); cursor: pointer; position: absolute; right: 20px; top: 20px; }
 
 .center-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center; /* Vertically center the form */
+  justify-content: center;
   padding: 20px;
   overflow-y: auto;
 }
 
 .card { padding: 10px; }
-.subtitle { color: var(--text-sub); margin-bottom: 20px; font-size: 0.95rem; }
+.subtitle { color: var(--text-sub); margin-bottom: 20px; font-size: 0.95rem; text-align: center; }
 .input-group { margin-bottom: 15px; }
+.status-text { text-align: center; margin-top: 15px; color: var(--primary); font-weight: 500; }
 
 input {
   width: 100%;
   padding: 14px;
   border: 1px solid #ddd;
   border-radius: 12px;
-  font-size: 16px; /* 16px prevents iOS zoom on focus */
+  font-size: 16px;
   outline: none;
-  transition: border-color 0.2s;
   background: #f9f9f9;
+  margin-bottom: 10px;
 }
 input:focus { border-color: var(--primary); background: #fff; }
 
-.btn-primary {
+.btn-primary, .btn-secondary {
   width: 100%;
   padding: 14px;
-  background: var(--primary);
-  color: white;
   border: none;
   border-radius: 12px;
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
+  margin-bottom: 10px;
 }
-.btn-primary:hover { opacity: 0.9; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: #e5e5ea; color: var(--text-main); }
 
 /* HISTORY STYLES */
 #history-container { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
-#history-container h3 { font-size: 0.8rem; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+#history-container h3 { font-size: 0.8rem; color: var(--text-sub); text-transform: uppercase; margin-bottom: 10px; }
 #room-history-list { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; }
 .history-item {
   display: flex;
@@ -121,14 +121,10 @@ input:focus { border-color: var(--primary); background: #fff; }
   margin-bottom: 8px;
   cursor: pointer;
 }
-.history-item:hover { background: #eee; }
-.history-info { display: flex; flex-direction: column; }
-.history-room { font-weight: 600; }
-.history-time { font-size: 0.75rem; color: #888; }
 .delete-btn { background: none; border: none; color: #ccc; cursor: pointer; padding: 5px; font-size: 1.2rem; }
 .delete-btn:hover { color: var(--danger); }
 
-/* CHAT SCREEN STYLES */
+/* CHAT SCREEN */
 .chat-header {
   display: flex;
   align-items: center;
@@ -138,9 +134,37 @@ input:focus { border-color: var(--primary); background: #fff; }
   border-bottom: 1px solid #f0f0f0;
   z-index: 10;
 }
-.icon-btn { background: none; border: none; cursor: pointer; color: var(--primary); padding: 5px; display: flex; align-items: center; }
+.icon-btn { background: none; border: none; cursor: pointer; color: var(--primary); padding: 5px; }
 
-/* The message area takes all remaining space */
+/* Pending / Waiting Room UI */
+.pending-container {
+    background: #fff3cd;
+    border-bottom: 1px solid #ffeeba;
+    padding: 10px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+.pending-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.btn-approve {
+    background: var(--success);
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
 .messages-area {
   flex: 1;
   overflow-y: auto;
@@ -148,7 +172,6 @@ input:focus { border-color: var(--primary); background: #fff; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* CRITICAL: Allows flex container to shrink below content size */
   min-height: 0; 
   scroll-behavior: smooth;
 }
@@ -162,40 +185,18 @@ input:focus { border-color: var(--primary); background: #fff; }
   position: relative;
   word-wrap: break-word;
 }
+.msg.self { align-self: flex-end; background: var(--bubble-self); color: white; border-bottom-right-radius: 4px; }
+.msg.other { align-self: flex-start; background: var(--bubble-other); color: var(--text-main); border-bottom-left-radius: 4px; }
 .msg .sender-name { font-size: 0.7rem; margin-bottom: 2px; opacity: 0.7; display: block; font-weight: 600; }
+.msg-time { font-size: 0.65rem; margin-top: 4px; text-align: right; align-self: flex-end; opacity: 0.8; }
 
-.msg.self {
-  align-self: flex-end;
-  background: var(--bubble-self);
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-.msg.other {
-  align-self: flex-start;
-  background: var(--bubble-other);
-  color: var(--text-main);
-  border-bottom-left-radius: 4px;
-}
-
-.msg-time {
-  font-size: 0.65rem;
-  margin-top: 4px;
-  text-align: right;
-  align-self: flex-end;
-  opacity: 0.8;
-}
-.msg.self .msg-time { color: rgba(255, 255, 255, 0.8); }
-.msg.other .msg-time { color: rgba(0, 0, 0, 0.5); }
-
-/* Input area pinned to bottom */
 .input-area {
-  flex-shrink: 0; /* Never shrink this */
+  flex-shrink: 0;
   display: flex;
   gap: 10px;
   padding: 10px 15px;
   background: #fff;
   border-top: 1px solid #f0f0f0;
-  /* Safe area for iPhone home bar */
   padding-bottom: env(safe-area-inset-bottom, 20px); 
 }
 .btn-send {
@@ -210,4 +211,32 @@ input:focus { border-color: var(--primary); background: #fff; }
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* MODAL STYLES */
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+.modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 350px;
+    position: relative;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+.close-modal {
+    position: absolute;
+    top: 15px; right: 20px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
 }
