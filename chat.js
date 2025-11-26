@@ -39,12 +39,9 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 
 // --- DOM Elements ---
-// Screens
 const authScreen = document.getElementById("auth-screen");
 const joinScreen = document.getElementById("join-screen");
 const chatScreen = document.getElementById("chat-screen");
-
-// Auth Modals
 const modalLogin = document.getElementById("modal-login");
 const modalSignup = document.getElementById("modal-signup");
 const btnShowLogin = document.getElementById("btn-show-login");
@@ -53,8 +50,6 @@ const closeModals = document.querySelectorAll(".close-modal");
 const formLogin = document.getElementById("form-login");
 const formSignup = document.getElementById("form-signup");
 const btnLogout = document.getElementById("btn-logout");
-
-// Join & Chat
 const joinForm = document.getElementById("join-form");
 const msgForm = document.getElementById("msg-form");
 const historyContainer = document.getElementById("history-container");
@@ -63,6 +58,9 @@ const messagesDiv = document.getElementById("messages");
 const pendingArea = document.getElementById("pending-area");
 const roomTitle = document.getElementById("room-title");
 const roomCodeInput = document.getElementById("room-code");
+// NEW element
+const roomPasswordInput = document.getElementById("room-password");
+const roomPassDisplay = document.getElementById("room-pass-display");
 const msgInput = document.getElementById("msg-input");
 const backBtn = document.getElementById("back-btn");
 const welcomeMsg = document.getElementById("welcome-msg");
@@ -73,6 +71,7 @@ let currentRoom = null;
 let msgListener = null;
 let pendingListener = null;
 let approvalListener = null;
+const MASTER_PASS = "admin 67";
 
 // --- UTILS ---
 function formatTime(timestamp) {
@@ -90,14 +89,19 @@ function toggleModal(modal, show) {
   modal.classList.toggle("hidden", !show);
 }
 
+// Generate random 6-char password (lowercase + numbers)
+function generateRoomPassword() {
+    return Math.random().toString(36).substring(2, 8);
+}
+
 // --- AUTH LOGIC ---
 
-// 1. Handle UI Switching
 onAuthStateChanged(auth, (user) => {
   if (user) {
     authScreen.classList.add("hidden");
     joinScreen.classList.remove("hidden");
-    welcomeMsg.textContent = `Logged in as ${user.displayName}`;
+    // FIX: Display actual displayName
+    welcomeMsg.textContent = `Logged in as ${user.displayName || 'User'}`;
     loadRoomHistory();
   } else {
     joinScreen.classList.add("hidden");
@@ -108,7 +112,6 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// 2. Button Listeners
 btnShowLogin.addEventListener("click", () => toggleModal(modalLogin, true));
 btnShowSignup.addEventListener("click", () => toggleModal(modalSignup, true));
 closeModals.forEach(btn => btn.addEventListener("click", () => {
@@ -117,12 +120,11 @@ closeModals.forEach(btn => btn.addEventListener("click", () => {
 }));
 btnLogout.addEventListener("click", () => signOut(auth));
 
-// 3. Login Submit
 formLogin.addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("login-user").value.trim();
     const pass = document.getElementById("login-pass").value;
-    const email = `${username}@flochat.com`; // Fake email
+    const email = `${username}@flochat.com`;
 
     try {
         await signInWithEmailAndPassword(auth, email, pass);
@@ -133,7 +135,6 @@ formLogin.addEventListener("submit", async (e) => {
     }
 });
 
-// 4. Signup Submit
 formSignup.addEventListener("submit", async (e) => {
     e.preventDefault();
     const username = document.getElementById("signup-user").value.trim();
@@ -142,23 +143,22 @@ formSignup.addEventListener("submit", async (e) => {
 
     try {
         const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-        // Save display name
         await updateProfile(userCred.user, { displayName: username });
-        
         toggleModal(modalSignup, false);
         formSignup.reset();
     } catch (err) {
         if (err.code === 'auth/email-already-in-use') {
             alert("That username is already taken.");
+        } else if (err.code === 'auth/weak-password') {
+             alert("Password should be at least 6 characters.");
         } else {
             alert("Error: " + err.message);
         }
     }
 });
 
-// --- ROOM LOGIC ---
+// --- ROOM HISTORY LOGIC ---
 
-// History
 async function saveRoomToHistory(code) {
   const uid = auth.currentUser?.uid;
   if (!uid) return;
@@ -195,7 +195,8 @@ function renderHistoryItem(code) {
   li.addEventListener("click", (e) => {
     if (!e.target.classList.contains("delete-btn")) {
         roomCodeInput.value = code;
-        joinForm.requestSubmit();
+        // Don't auto-submit, let them enter password if needed
+        roomPasswordInput.focus(); 
     }
   });
   li.querySelector(".delete-btn").addEventListener("click", async (e) => {
@@ -204,102 +205,132 @@ function renderHistoryItem(code) {
     await remove(ref(db, `users/${uid}/history/${code}`));
     li.remove();
   });
-  historyList.prepend(li); // Newest first
+  historyList.prepend(li);
 }
 
-// --- JOINING & WAITING ROOM LOGIC ---
+// --- JOINING & PASSWORD LOGIC ---
 
 joinForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const code = roomCodeInput.value.trim().toLowerCase();
+  const inputPass = roomPasswordInput.value.trim();
+  
   if (!code) return;
 
-  const uid = auth.currentUser.uid;
-  const displayName = auth.currentUser.displayName;
-
-  // UI Feedback
   const btn = joinForm.querySelector("button");
   btn.disabled = true;
-  joinStatus.textContent = "Checking room status...";
+  joinStatus.textContent = "Verifying...";
   joinStatus.classList.remove("hidden");
 
-  // 1. Check if messages exist in the room
-  const msgsRef = ref(db, `rooms/${code}/messages`);
-  const snapshot = await get(query(msgsRef, limitToLast(1)));
+  try {
+      // 1. Check Master Password
+      if (inputPass === MASTER_PASS) {
+           await enterChat(code);
+           btn.disabled = false;
+           return;
+      }
 
-  const isEmpty = !snapshot.exists();
+      // 2. Check Room Metadata
+      const metaRef = ref(db, `rooms/${code}/metadata`);
+      const metaSnap = await get(metaRef);
 
-  if (isEmpty) {
-    // Room is empty -> Auto Join
-    await enterChat(code);
-  } else {
-    // Room has history -> Check if already allowed
-    const allowedRef = ref(db, `rooms/${code}/allowed/${uid}`);
-    const allowedSnap = await get(allowedRef);
-
-    if (allowedSnap.exists()) {
-        await enterChat(code);
-    } else {
-        // Not allowed yet -> Add to pending
-        joinStatus.textContent = "Request sent to host. Waiting for approval...";
-        
-        await set(ref(db, `rooms/${code}/pending/${uid}`), {
-            name: displayName,
-            timestamp: serverTimestamp()
-        });
-
-        // Listen for approval
-        approvalListener = onValue(ref(db, `rooms/${code}/allowed/${uid}`), (snap) => {
-            if (snap.exists()) {
-                // Approved!
-                off(ref(db, `rooms/${code}/allowed/${uid}`)); // stop listening
-                enterChat(code);
-            }
-        });
-    }
+      if (!metaSnap.exists()) {
+          // Room doesn't exist (or is old pre-password room). 
+          // Create it with a new password.
+          const newPass = generateRoomPassword();
+          await set(metaRef, {
+              password: newPass,
+              createdAt: serverTimestamp()
+          });
+          // Enter immediately as creator
+          await enterChat(code);
+      } else {
+          // Room exists, check password
+          const realPass = metaSnap.val().password;
+          if (inputPass === realPass) {
+              // Password match, proceed to normal join flow
+              await handleNormalJoinFlow(code);
+          } else {
+              joinStatus.textContent = "Incorrect Room Password.";
+              joinStatus.style.color = "var(--danger)";
+          }
+      }
+  } catch (err) {
+      joinStatus.textContent = "Error: " + err.message;
   }
   
   btn.disabled = false;
 });
 
+// Handle Allowed/Pending status after password is verified
+async function handleNormalJoinFlow(code) {
+  const uid = auth.currentUser.uid;
+  const displayName = auth.currentUser.displayName;
+
+  const allowedRef = ref(db, `rooms/${code}/allowed/${uid}`);
+  const allowedSnap = await get(allowedRef);
+
+  if (allowedSnap.exists()) {
+      await enterChat(code);
+  } else {
+      joinStatus.textContent = "Password accepted. Waiting for host approval...";
+      joinStatus.style.color = "var(--primary)";
+      
+      await set(ref(db, `rooms/${code}/pending/${uid}`), {
+          name: displayName,
+          timestamp: serverTimestamp()
+      });
+
+      approvalListener = onValue(ref(db, `rooms/${code}/allowed/${uid}`), (snap) => {
+          if (snap.exists()) {
+              off(ref(db, `rooms/${code}/allowed/${uid}`));
+              enterChat(code);
+          }
+      });
+  }
+}
+
 async function enterChat(code) {
   currentRoom = code;
   const uid = auth.currentUser.uid;
 
-  // Add self to allowed list (so I can rejoin later without asking)
+  // Ensure allowed
   await set(ref(db, `rooms/${code}/allowed/${uid}`), true);
-
-  // Remove self from pending if I was there
   remove(ref(db, `rooms/${code}/pending/${uid}`));
 
   // UI Switch
   joinScreen.classList.add("hidden");
   joinStatus.classList.add("hidden");
   joinStatus.textContent = "";
+  joinStatus.style.color = "var(--primary)";
+  roomPasswordInput.value = ""; // Clear pass input
+
   chatScreen.classList.remove("hidden");
   roomTitle.textContent = `#${code}`;
   messagesDiv.innerHTML = "";
   pendingArea.innerHTML = "";
   pendingArea.classList.add("hidden");
 
+  // Get and display password
+  const passSnap = await get(ref(db, `rooms/${code}/metadata/password`));
+  if(passSnap.exists()) {
+      roomPassDisplay.textContent = `Pass: ${passSnap.val()}`;
+      roomPassDisplay.classList.remove("hidden");
+  }
+
   saveRoomToHistory(code);
 
-  // 1. Listen for Messages
+  // Listeners
   const msgsQuery = query(ref(db, `rooms/${code}/messages`), limitToLast(50));
   msgListener = onChildAdded(msgsQuery, (snap) => {
     addMessageToUI(snap.val());
   });
 
-  // 2. Listen for Pending Requests (I am now a host because I am in)
   const pendingQuery = query(ref(db, `rooms/${code}/pending`));
-  
   pendingListener = onChildAdded(pendingQuery, (snap) => {
-    const pUser = snap.val();
-    const pUid = snap.key;
-    renderPendingRequest(pUid, pUser.name);
+    renderPendingRequest(snap.key, snap.val().name);
   });
 
-  // Handle removals (if another host approves them)
   onChildRemoved(pendingQuery, (snap) => {
     const el = document.getElementById(`pending-${snap.key}`);
     if (el) el.remove();
@@ -307,10 +338,9 @@ async function enterChat(code) {
   });
 }
 
-// --- PENDING REQUEST UI (Host Side) ---
+// --- PENDING REQUEST UI ---
 function renderPendingRequest(reqUid, reqName) {
     pendingArea.classList.remove("hidden");
-    
     const div = document.createElement("div");
     div.id = `pending-${reqUid}`;
     div.className = "pending-item";
@@ -318,24 +348,16 @@ function renderPendingRequest(reqUid, reqName) {
         <span><b>${reqName}</b> wants to join</span>
         <button class="btn-approve">Allow</button>
     `;
-
     div.querySelector(".btn-approve").addEventListener("click", async () => {
-        // 1. Add to allowed
         await set(ref(db, `rooms/${currentRoom}/allowed/${reqUid}`), true);
-        // 2. Remove from pending
         await remove(ref(db, `rooms/${currentRoom}/pending/${reqUid}`));
-        // UI handles removal via onChildRemoved listener above
     });
-
     pendingArea.appendChild(div);
 }
 
-
 // --- CHAT MESSAGING ---
-
 function addMessageToUI(msg) {
   const isSelf = msg.uid === auth.currentUser?.uid;
-  
   const div = document.createElement("div");
   div.className = `msg ${isSelf ? "self" : "other"}`;
   const nameHtml = isSelf ? "" : `<span class="sender-name">${msg.sender}</span>`;
@@ -345,7 +367,6 @@ function addMessageToUI(msg) {
     <div class="text">${msg.text}</div>
     <div class="msg-time">${formatTime(msg.createdAt)}</div>
   `;
-  
   messagesDiv.appendChild(div);
   scrollToBottom();
 }
@@ -361,25 +382,22 @@ msgForm.addEventListener("submit", async (e) => {
     uid: auth.currentUser.uid,
     createdAt: serverTimestamp()
   });
-
   msgInput.value = "";
   msgInput.focus();
   scrollToBottom();
 });
 
 backBtn.addEventListener("click", () => {
-  // Detach listeners
   if (currentRoom) {
     off(query(ref(db, `rooms/${currentRoom}/messages`)));
     off(query(ref(db, `rooms/${currentRoom}/pending`)));
     if (approvalListener) off(ref(db, `rooms/${currentRoom}/allowed`)); 
   }
-  
   currentRoom = null;
   msgListener = null;
   pendingListener = null;
-
   chatScreen.classList.add("hidden");
   joinScreen.classList.remove("hidden");
-  loadRoomHistory(); // Refresh history
+  roomPassDisplay.classList.add("hidden"); // Hide pass on exit
+  loadRoomHistory();
 });

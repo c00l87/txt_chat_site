@@ -38,7 +38,10 @@
 
             <form id="join-form">
                 <div class="input-group">
-                  <input id="room-code" placeholder="Room Code (e.g. pizza)" required />
+                  <input id="room-code" placeholder="Room Code" required autocomplete="off" />
+                </div>
+                <div class="input-group">
+                    <input id="room-password" type="password" placeholder="Room Password (leave empty if new)" autocomplete="off" />
                 </div>
                 <button type="submit" class="btn-primary">Enter Room</button>
                 <p id="join-status" class="status-text hidden"></p>
@@ -57,12 +60,14 @@
           <button id="back-btn" class="icon-btn">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
           </button>
-          <h2 id="room-title">Room</h2>
+          <div class="header-info">
+             <h2 id="room-title">Room</h2>
+             <span id="room-pass-display" class="pass-badge hidden">Pass: ???</span>
+          </div>
           <div class="spacer" style="width: 24px;"></div>
         </div>
 
-        <div id="pending-area" class="pending-container hidden">
-            </div>
+        <div id="pending-area" class="pending-container hidden"></div>
 
         <div id="messages" class="messages-area"></div>
 
@@ -94,7 +99,7 @@
             <h2>Create Account</h2>
             <form id="form-signup">
                 <input id="signup-user" placeholder="Choose Username" required />
-                <input id="signup-pass" type="password" placeholder="Password" required />
+                <input id="signup-pass" type="password" placeholder="Password (min 6 chars)" required />
                 <button type="submit" class="btn-primary">Create</button>
             </form>
         </div>
