@@ -56,7 +56,6 @@ const chatScreen = document.getElementById("chat-screen");
 // Modals
 const modalLogin = document.getElementById("modal-login");
 const modalSignup = document.getElementById("modal-signup");
-// Renamed variable for clarity
 const modalSettings = document.getElementById("modal-change-pass"); 
 const modalActiveUsers = document.getElementById("modal-active-users");
 const btnShowLogin = document.getElementById("btn-show-login");
@@ -66,12 +65,12 @@ const closeModals = document.querySelectorAll(".close-modal");
 // Forms & Inputs
 const formLogin = document.getElementById("form-login");
 const formSignup = document.getElementById("form-signup");
-// Renamed variable
 const formSettings = document.getElementById("form-change-pass");
 const btnLogout = document.getElementById("btn-logout");
 const btnSettings = document.getElementById("btn-settings");
 const btnForgotPass = document.getElementById("btn-forgot-pass");
 const btnThemeToggle = document.getElementById("btn-theme-toggle");
+const btnMuteToggle = document.getElementById("btn-mute-toggle"); // NEW
 const btnActiveUsers = document.getElementById("btn-active-users");
 
 const joinForm = document.getElementById("join-form");
@@ -116,6 +115,7 @@ const MASTER_PASS = "admin 67";
 let gifSearchTimeout = null;
 let recognition = null; 
 let isDarkMode = false; 
+let isMuted = false; // NEW state
 let typingTimeout = null; 
 
 
@@ -136,13 +136,13 @@ function toggleModal(modal, show) {
   if(!show) {
       formLogin.reset();
       formSignup.reset();
-      // Reset settings form on close
       formSettings.reset();
   }
 }
 
-// Helper to play sound
+// Helper to play sound (checked mute state)
 function playBeep() {
+    if(isMuted) return; // Don't play if muted
     msgSound.currentTime = 0;
     msgSound.play().catch(e => console.log("Audio play prevented:", e));
 }
@@ -153,10 +153,15 @@ function generateRoomPassword() {
 }
 
 
-// --- THEME LOGIC ---
+// --- THEME & MUTE LOGIC ---
 const savedTheme = localStorage.getItem('flochat-theme');
 if (savedTheme === 'dark') {
     enableDarkMode(true);
+}
+
+const savedMute = localStorage.getItem('flochat-muted');
+if (savedMute === 'true') {
+    toggleMute(true);
 }
 
 function enableDarkMode(enable) {
@@ -168,8 +173,23 @@ function enableDarkMode(enable) {
         '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
 }
 
+function toggleMute(muted) {
+    isMuted = muted;
+    localStorage.setItem('flochat-muted', muted);
+    // Update icon based on state
+    btnMuteToggle.innerHTML = muted ? 
+        // Muted icon with X
+        '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>' : 
+        // Unmuted icon with waves
+        '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+}
+
 btnThemeToggle.addEventListener('click', () => {
     enableDarkMode(!isDarkMode);
+});
+
+btnMuteToggle.addEventListener('click', () => {
+    toggleMute(!isMuted);
 });
 
 
