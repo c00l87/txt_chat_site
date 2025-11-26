@@ -32,17 +32,22 @@ body {
 
 .app-container {
   width: 100%;
-  max-width: 480px;
+  /* Default for mobile */
+  max-width: 480px; 
   height: 100%;
   background: var(--card-bg);
   position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: max-width 0.3s ease;
 }
 
-@media (min-width: 500px) {
+/* PC / Tablet Layout - wider */
+@media (min-width: 768px) {
   .app-container {
+    /* Wider max-width for PC */
+    max-width: 900px; 
     height: 85vh;
     border-radius: 20px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.1);
@@ -64,8 +69,12 @@ body {
 
 /* AUTH & JOIN SCREENS */
 header { padding: 20px; text-align: center; position: relative; }
+.join-header { display: flex; justify-content: space-between; align-items: center; }
 h1 { margin: 0; color: var(--primary); font-size: 1.8rem; letter-spacing: -0.5px; }
-.text-btn { background: none; border: none; color: var(--text-sub); cursor: pointer; position: absolute; right: 20px; top: 20px; }
+
+.header-actions { display: flex; gap: 15px; }
+.icon-btn { background: none; border: none; cursor: pointer; color: var(--primary); padding: 5px; display: flex; align-items: center; justify-content: center;}
+.icon-btn:hover { opacity: 0.8; }
 
 .center-content {
   flex: 1;
@@ -74,9 +83,10 @@ h1 { margin: 0; color: var(--primary); font-size: 1.8rem; letter-spacing: -0.5px
   justify-content: center;
   padding: 20px;
   overflow-y: auto;
+  align-items: center; 
 }
 
-.card { padding: 10px; }
+.card { padding: 20px; width: 100%; max-width: 400px; }
 .subtitle { color: var(--text-sub); margin-bottom: 20px; font-size: 0.95rem; text-align: center; }
 .input-group { margin-bottom: 15px; }
 .status-text { text-align: center; margin-top: 15px; color: var(--primary); font-weight: 500; }
@@ -106,9 +116,10 @@ input:focus { border-color: var(--primary); background: #fff; }
 .btn-primary { background: var(--primary); color: white; }
 .btn-primary:hover { background: var(--primary-dark); }
 .btn-secondary { background: #e5e5ea; color: var(--text-main); }
+.text-link { background: none; border: none; color: var(--primary); cursor: pointer; text-decoration: underline; font-size: 0.9rem; padding: 0;}
 
 /* HISTORY STYLES */
-#history-container { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+#history-container { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; width: 100%; }
 #history-container h3 { font-size: 0.8rem; color: var(--text-sub); text-transform: uppercase; margin-bottom: 10px; }
 #room-history-list { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; }
 .history-item {
@@ -134,124 +145,81 @@ input:focus { border-color: var(--primary); background: #fff; }
   border-bottom: 1px solid #f0f0f0;
   z-index: 10;
 }
-.header-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
+.header-info { display: flex; flex-direction: column; align-items: center; }
 .pass-badge {
-    font-size: 0.75rem;
-    background: #f0f2f5;
-    padding: 2px 8px;
-    border-radius: 10px;
-    color: var(--text-sub);
-    margin-top: 4px;
-    font-family: monospace;
-    border: 1px solid #ddd;
+    font-size: 0.75rem; background: #f0f2f5; padding: 2px 8px; border-radius: 10px;
+    color: var(--text-sub); margin-top: 4px; font-family: monospace; border: 1px solid #ddd;
 }
-.icon-btn { background: none; border: none; cursor: pointer; color: var(--primary); padding: 5px; }
 
-/* Pending / Waiting Room UI */
+/* Pending UI */
 .pending-container {
-    background: #fff3cd;
-    border-bottom: 1px solid #ffeeba;
-    padding: 10px;
-    max-height: 100px;
-    overflow-y: auto;
+    background: #fff3cd; border-bottom: 1px solid #ffeeba; padding: 10px;
+    max-height: 100px; overflow-y: auto;
 }
 .pending-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: white;
-    padding: 8px 12px;
-    border-radius: 20px;
-    margin-bottom: 5px;
-    font-size: 0.9rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex; justify-content: space-between; align-items: center;
+    background: white; padding: 8px 12px; border-radius: 20px; margin-bottom: 5px; font-size: 0.9rem;
 }
-.btn-approve {
-    background: var(--success);
-    color: white;
-    border: none;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    cursor: pointer;
-}
+.btn-approve { background: var(--success); color: white; border: none; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; cursor: pointer; }
 
+/* Messages */
 .messages-area {
-  flex: 1;
-  overflow-y: auto;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0; 
-  scroll-behavior: smooth;
+  flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; min-height: 0; scroll-behavior: smooth;
 }
-
 .msg {
   max-width: 80%;
-  padding: 10px 14px;
-  border-radius: 18px;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  position: relative;
-  word-wrap: break-word;
+  /* Ensure bubbles don't get too wide on PC */
+  @media(min-width: 768px) { max-width: 600px; }
+  padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; position: relative; word-wrap: break-word;
 }
 .msg.self { align-self: flex-end; background: var(--bubble-self); color: white; border-bottom-right-radius: 4px; }
 .msg.other { align-self: flex-start; background: var(--bubble-other); color: var(--text-main); border-bottom-left-radius: 4px; }
 .msg .sender-name { font-size: 0.7rem; margin-bottom: 2px; opacity: 0.7; display: block; font-weight: 600; }
 .msg-time { font-size: 0.65rem; margin-top: 4px; text-align: right; align-self: flex-end; opacity: 0.8; }
 
+/* Image/GIF Messages */
+.msg-image {
+    max-width: 100%;
+    border-radius: 12px;
+    display: block;
+    margin-bottom: 5px;
+}
+/* Remove padding for image-only messages for cleaner look */
+.msg:has(.msg-image) {
+    padding: 5px;
+    background: transparent;
+}
+.msg.self:has(.msg-image) .sender-name, .msg.self:has(.msg-image) .msg-time { color: var(--text-sub); padding: 0 5px;}
+
+/* Input Area & GIF Picker */
 .input-area {
-  flex-shrink: 0;
-  display: flex;
-  gap: 10px;
-  padding: 10px 15px;
-  background: #fff;
-  border-top: 1px solid #f0f0f0;
+  flex-shrink: 0; display: flex; gap: 10px; padding: 10px 15px; background: #fff; border-top: 1px solid #f0f0f0; position: relative;
   padding-bottom: env(safe-area-inset-bottom, 20px); 
 }
+.gif-btn { color: var(--text-sub); padding: 8px; }
+
+.gif-picker {
+    position: absolute; bottom: 70px; left: 10px; right: 10px; height: 250px;
+    background: white; border-radius: 12px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+    display: flex; flex-direction: column; overflow: hidden; z-index: 20; border: 1px solid #eee;
+}
+.gif-search-bar { padding: 10px; border-bottom: 1px solid #eee; }
+.gif-search-bar input { margin-bottom: 0; padding: 8px; font-size: 14px; }
+.gif-results { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 5px; }
+.gif-thumb { width: 100%; height: 80px; object-fit: cover; border-radius: 4px; cursor: pointer; }
+.gif-thumb:hover { opacity: 0.8; }
+
 .btn-send {
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
+  background: var(--primary); color: white; border: none; border-radius: 50%; width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
 }
 
 /* MODAL STYLES */
 .modal {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    backdrop-filter: blur(5px);
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+    display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px);
 }
 .modal-content {
-    background: white;
-    padding: 25px;
-    border-radius: 20px;
-    width: 90%;
-    max-width: 350px;
-    position: relative;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    background: white; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
-.close-modal {
-    position: absolute;
-    top: 15px; right: 20px;
-    font-size: 24px;
-    cursor: pointer;
-    color: #999;
-}
+.close-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #999; }
