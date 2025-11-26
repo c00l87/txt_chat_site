@@ -40,7 +40,7 @@ const firebaseConfig = {
 };
 
 // --- GIPHY CONFIG (IMPORTANT: REPLACE WITH YOUR KEY) ---
-const GIPHY_API_KEY = "YOUR_GIPHY_API_KEY_HERE"; 
+const GIPHY_API_KEY = "BBK6dAhShZbf3u9nE2rjOfmPX2NB4HgF"; 
 const GIPHY_BASE_URL = "https://api.giphy.com/v1/gifs";
 
 
