@@ -327,3 +327,62 @@ emoji-picker { width: 100%; height: 100%; }
     width: 10px; height: 10px; background: var(--success); border-radius: 50%; margin-right: 10px;
     box-shadow: 0 0 0 2px var(--card-bg);
 }
+
+/* NEW: Camera Modal Specifics */
+.camera-content {
+    background: #000; /* Black background for camera feel */
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 500px;
+    height: 80vh; /* Taller for camera view */
+}
+
+.camera-content .close-modal {
+    color: white;
+    z-index: 10;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.video-wrapper {
+    flex: 1;
+    position: relative;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+#camera-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Fill the area */
+}
+
+.camera-controls {
+    height: 100px;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-snap {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: white;
+    border: 4px solid rgba(255,255,255,0.3);
+    cursor: pointer;
+    transition: transform 0.1s;
+    outline: none;
+}
+
+.btn-snap:active {
+    transform: scale(0.9);
+    background: #eee;
+}

@@ -102,7 +102,7 @@
 
         <form id="msg-form" class="input-area">
           <input type="file" id="file-input" accept="image/*" class="hidden" />
-          <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" />
+          <input type="file" id="camera-input-fallback" accept="image/*" capture="environment" class="hidden" />
 
           <button type="button" id="btn-camera" class="icon-btn camera-btn" title="Camera">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
@@ -180,7 +180,20 @@
             <span class="close-modal">&times;</span>
             <h2>Active Users</h2>
             <ul id="active-users-list">
-                </ul>
+            </ul>
+        </div>
+    </div>
+
+    <div id="modal-camera" class="modal hidden">
+        <div class="modal-content camera-content">
+            <span id="close-camera-btn" class="close-modal">&times;</span>
+            <div class="video-wrapper">
+                <video id="camera-stream" autoplay playsinline></video>
+                <canvas id="camera-canvas" class="hidden"></canvas>
+            </div>
+            <div class="camera-controls">
+                <button id="btn-take-photo" class="btn-snap"></button>
+            </div>
         </div>
     </div>
 

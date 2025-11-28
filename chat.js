@@ -114,9 +114,8 @@ const btnMic = document.getElementById("btn-mic");
 const btnGallery = document.getElementById("btn-gallery");
 const fileInput = document.getElementById("file-input");
 
-// Camera Elements
+// Camera Elements (Button triggers modal now)
 const btnCamera = document.getElementById("btn-camera");
-const cameraInput = document.getElementById("camera-input");
 
 
 // State
@@ -238,6 +237,8 @@ closeModals.forEach(btn => btn.addEventListener("click", () => {
     toggleModal(modalSignup, false);
     toggleModal(modalSettings, false);
     toggleModal(modalActiveUsers, false);
+    // Also try to close camera if open
+    if(typeof stopCamera === "function") stopCamera();
 }));
 btnLogout.addEventListener("click", () => signOut(auth));
 
@@ -479,9 +480,19 @@ function renderGifs(gifs) {
 
 // --- CHAT & MESSAGE LOGIC ---
 
-// NEW: SHARED IMAGE UPLOAD LOGIC
-async function handleImageUpload(e) {
-    const file = e.target.files[0];
+// --- CAMERA & IMAGE LOGIC ---
+
+// Elements for Live Camera
+const modalCamera = document.getElementById("modal-camera");
+const cameraStream = document.getElementById("camera-stream");
+const cameraCanvas = document.getElementById("camera-canvas");
+const btnTakePhoto = document.getElementById("btn-take-photo");
+const closeCameraBtn = document.getElementById("close-camera-btn");
+
+let mediaStream = null;
+
+// 1. REFACTORED: Generic Upload Function (Used by Gallery AND Camera)
+async function uploadFileToChat(file) {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
@@ -495,13 +506,14 @@ async function handleImageUpload(e) {
     }
 
     // Visual feedback
-    btnGallery.style.color = "var(--primary)";
     msgInput.placeholder = "Uploading image...";
     msgInput.disabled = true;
 
     try {
         // Create storage reference: rooms/{roomCode}/{timestamp_filename}
-        const storagePath = `rooms/${currentRoom}/${Date.now()}_${file.name}`;
+        // If it's a blob from camera, give it a name
+        const fileName = file.name || `camera_${Date.now()}.jpg`;
+        const storagePath = `rooms/${currentRoom}/${Date.now()}_${fileName}`;
         const storageReference = sRef(storage, storagePath);
 
         // Upload
@@ -513,33 +525,108 @@ async function handleImageUpload(e) {
         // Send as message
         await sendMessage(downloadURL, 'image');
 
+        // Close camera modal if open
+        stopCamera();
+        modalCamera.classList.add("hidden");
+
     } catch (error) {
         console.error("Upload failed:", error);
         alert("Failed to upload image.");
     } finally {
         // Reset inputs and UI
         fileInput.value = ""; 
-        cameraInput.value = ""; // Clear camera input too
         msgInput.placeholder = "Type a message...";
         msgInput.disabled = false;
-        btnGallery.style.color = ""; 
         msgInput.focus();
     }
 }
 
+// 2. Gallery Input Handler
+function handleGalleryUpload(e) {
+    const file = e.target.files[0];
+    uploadFileToChat(file);
+}
 
-// LISTENERS FOR IMAGE/CAMERA
+// 3. Live Camera Functions
+async function startCamera() {
+    // Check if browser supports media devices
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Camera not supported on this browser.");
+        return;
+    }
+
+    try {
+        modalCamera.classList.remove("hidden");
+        // Prefer rear camera on mobile ('environment'), fallback to user
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' }, 
+            audio: false 
+        });
+        cameraStream.srcObject = mediaStream;
+    } catch (err) {
+        console.error("Camera Error:", err);
+        alert("Could not access camera. Please allow permissions.");
+        modalCamera.classList.add("hidden");
+    }
+}
+
+function stopCamera() {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+    }
+    cameraStream.srcObject = null;
+    modalCamera.classList.add("hidden");
+}
+
+function takePhoto() {
+    if (!mediaStream) return;
+
+    // Set canvas size to match video stream
+    cameraCanvas.width = cameraStream.videoWidth;
+    cameraCanvas.height = cameraStream.videoHeight;
+
+    const ctx = cameraCanvas.getContext("2d");
+    // Draw current video frame to canvas
+    ctx.drawImage(cameraStream, 0, 0, cameraCanvas.width, cameraCanvas.height);
+
+    // Convert canvas to Blob (Image file)
+    cameraCanvas.toBlob((blob) => {
+        if (blob) {
+            uploadFileToChat(blob);
+        } else {
+            alert("Failed to capture image.");
+        }
+    }, 'image/jpeg', 0.8); // 0.8 is quality (0 to 1)
+}
+
+
+// Open File Picker
 btnGallery.addEventListener("click", () => {
     fileInput.click();
 });
 
+// Start Live Camera
 btnCamera.addEventListener("click", () => {
-    cameraInput.click();
+    startCamera();
 });
 
-// Both inputs use the same handler
-fileInput.addEventListener("change", handleImageUpload);
-cameraInput.addEventListener("change", handleImageUpload);
+// Handle File Selection
+fileInput.addEventListener("change", handleGalleryUpload);
+
+// Handle Camera Snap
+btnTakePhoto.addEventListener("click", takePhoto);
+
+// Handle Camera Close
+closeCameraBtn.addEventListener("click", stopCamera);
+
+// Close camera if clicking outside the content
+modalCamera.addEventListener("click", (e) => {
+    if (e.target === modalCamera) {
+        stopCamera();
+    }
+});
+
 
 
 msgInput.addEventListener('input', () => {
