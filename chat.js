@@ -28,7 +28,6 @@ import {
   onDisconnect
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
-// NEW: Firebase Storage Import
 import { 
   getStorage, 
   ref as sRef, 
@@ -55,7 +54,7 @@ const GIPHY_BASE_URL = "https://api.giphy.com/v1/gifs";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-const storage = getStorage(app); // NEW: Storage Init
+const storage = getStorage(app); 
 
 // --- DOM Elements ---
 const authScreen = document.getElementById("auth-screen");
@@ -111,9 +110,13 @@ const emojiPickerContainer = document.getElementById("emoji-picker-container");
 const emojiPicker = document.querySelector("emoji-picker");
 const btnMic = document.getElementById("btn-mic");
 
-// NEW: Image Upload Elements
-const btnImage = document.getElementById("btn-image");
+// Image Buttons
+const btnGallery = document.getElementById("btn-gallery");
 const fileInput = document.getElementById("file-input");
+
+// Camera Elements
+const btnCamera = document.getElementById("btn-camera");
+const cameraInput = document.getElementById("camera-input");
 
 
 // State
@@ -476,12 +479,8 @@ function renderGifs(gifs) {
 
 // --- CHAT & MESSAGE LOGIC ---
 
-// NEW: IMAGE UPLOAD LOGIC
-btnImage.addEventListener("click", () => {
-    fileInput.click();
-});
-
-fileInput.addEventListener("change", async (e) => {
+// NEW: SHARED IMAGE UPLOAD LOGIC
+async function handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -496,7 +495,7 @@ fileInput.addEventListener("change", async (e) => {
     }
 
     // Visual feedback
-    btnImage.style.color = "var(--primary)";
+    btnGallery.style.color = "var(--primary)";
     msgInput.placeholder = "Uploading image...";
     msgInput.disabled = true;
 
@@ -518,13 +517,29 @@ fileInput.addEventListener("change", async (e) => {
         console.error("Upload failed:", error);
         alert("Failed to upload image.");
     } finally {
+        // Reset inputs and UI
         fileInput.value = ""; 
+        cameraInput.value = ""; // Clear camera input too
         msgInput.placeholder = "Type a message...";
         msgInput.disabled = false;
-        btnImage.style.color = ""; 
+        btnGallery.style.color = ""; 
         msgInput.focus();
     }
+}
+
+
+// LISTENERS FOR IMAGE/CAMERA
+btnGallery.addEventListener("click", () => {
+    fileInput.click();
 });
+
+btnCamera.addEventListener("click", () => {
+    cameraInput.click();
+});
+
+// Both inputs use the same handler
+fileInput.addEventListener("change", handleImageUpload);
+cameraInput.addEventListener("change", handleImageUpload);
 
 
 msgInput.addEventListener('input', () => {
