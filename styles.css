@@ -240,8 +240,8 @@ input:focus { border-color: var(--primary); background: var(--card-bg); }
 .input-area {
   flex-shrink: 0; 
   display: flex; 
-  gap: 3px; /* Reduced gap to save space */
-  padding: 10px 5px; /* Reduced padding */
+  gap: 3px; 
+  padding: 10px 5px;
   background: var(--card-bg); 
   border-top: 1px solid var(--border-light); 
   position: relative;
@@ -249,7 +249,6 @@ input:focus { border-color: var(--primary); background: var(--card-bg); }
   transition: background-color 0.3s, border-color 0.3s;
 }
 
-/* IMPORTANT: Allow text input to shrink/grow and set buttons to fixed size */
 .input-area input {
     flex: 1; 
     width: auto; 
@@ -257,12 +256,11 @@ input:focus { border-color: var(--primary); background: var(--card-bg); }
     margin-bottom: 0;
 }
 
-/* Unified Button Styles */
 .gallery-btn, .camera-btn, .gif-btn, .emoji-btn, .mic-btn { 
     color: var(--text-sub); 
     padding: 8px; 
     transition: color 0.2s;
-    flex-shrink: 0; /* Prevent buttons from shrinking */
+    flex-shrink: 0; 
 }
 
 .gallery-btn:hover, .camera-btn:hover, .gif-btn:hover, .emoji-btn:hover, .mic-btn:hover {
