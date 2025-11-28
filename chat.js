@@ -28,6 +28,14 @@ import {
   onDisconnect
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
+// NEW: Firebase Storage Import
+import { 
+  getStorage, 
+  ref as sRef, 
+  uploadBytes, 
+  getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
+
 // --- Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCSS-Ej-QDEosJD4EihZyr6y8l8ATzYaI8",
@@ -47,6 +55,7 @@ const GIPHY_BASE_URL = "https://api.giphy.com/v1/gifs";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+const storage = getStorage(app); // NEW: Storage Init
 
 // --- DOM Elements ---
 const authScreen = document.getElementById("auth-screen");
@@ -92,7 +101,7 @@ const activeUsersList = document.getElementById("active-users-list");
 const msgSound = document.getElementById("msg-sound");
 
 
-// GIF, Emoji, Mic Elements
+// GIF, Emoji, Mic, Image Elements
 const btnGif = document.getElementById("btn-gif");
 const gifPicker = document.getElementById("gif-picker");
 const gifSearchInput = document.getElementById("gif-search-input");
@@ -101,6 +110,10 @@ const btnEmoji = document.getElementById("btn-emoji");
 const emojiPickerContainer = document.getElementById("emoji-picker-container");
 const emojiPicker = document.querySelector("emoji-picker");
 const btnMic = document.getElementById("btn-mic");
+
+// NEW: Image Upload Elements
+const btnImage = document.getElementById("btn-image");
+const fileInput = document.getElementById("file-input");
 
 
 // State
@@ -462,6 +475,57 @@ function renderGifs(gifs) {
 
 
 // --- CHAT & MESSAGE LOGIC ---
+
+// NEW: IMAGE UPLOAD LOGIC
+btnImage.addEventListener("click", () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert("File is too large (Max 5MB).");
+        return;
+    }
+
+    if (!currentRoom) {
+        alert("You must be in a room to send images.");
+        return;
+    }
+
+    // Visual feedback
+    btnImage.style.color = "var(--primary)";
+    msgInput.placeholder = "Uploading image...";
+    msgInput.disabled = true;
+
+    try {
+        // Create storage reference: rooms/{roomCode}/{timestamp_filename}
+        const storagePath = `rooms/${currentRoom}/${Date.now()}_${file.name}`;
+        const storageReference = sRef(storage, storagePath);
+
+        // Upload
+        const snapshot = await uploadBytes(storageReference, file);
+        
+        // Get URL
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        // Send as message
+        await sendMessage(downloadURL, 'image');
+
+    } catch (error) {
+        console.error("Upload failed:", error);
+        alert("Failed to upload image.");
+    } finally {
+        fileInput.value = ""; 
+        msgInput.placeholder = "Type a message...";
+        msgInput.disabled = false;
+        btnImage.style.color = ""; 
+        msgInput.focus();
+    }
+});
+
 
 msgInput.addEventListener('input', () => {
     if (!currentRoom) return;

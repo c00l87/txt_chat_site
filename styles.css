@@ -242,7 +242,16 @@ input:focus { border-color: var(--primary); background: var(--card-bg); }
   padding-bottom: env(safe-area-inset-bottom, 20px); 
   transition: background-color 0.3s, border-color 0.3s;
 }
-.gif-btn, .emoji-btn, .mic-btn { color: var(--text-sub); padding: 8px; }
+
+.image-btn, .gif-btn, .emoji-btn, .mic-btn { 
+    color: var(--text-sub); 
+    padding: 8px; 
+    transition: color 0.2s;
+}
+
+.image-btn:hover, .gif-btn:hover, .emoji-btn:hover, .mic-btn:hover {
+    color: var(--primary);
+}
 
 /* Microphone Recording State */
 .mic-btn.recording {
